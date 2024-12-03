@@ -372,8 +372,6 @@ return_from_function:
 
 
 
-
-
 test_fit:
     # Function Prologue
     addi $sp, $sp, -16         # Allocate stack space
@@ -384,7 +382,11 @@ test_fit:
 
     li   $s0, 0                # Initialize loop counter to 0
     move $s1, $a0              # $s1 points to the start of the array of ships
-    li   $s2, 0                # Initialize  error to 0
+    li   $s2, 0                # Initialize error to 0
+
+    # Ensure starting address is aligned
+    andi $t0, $s1, 3           # Check if $s1 is word-aligned (last 2 bits == 0)
+    bne  $t0, $zero, return_error_4  # If not aligned, return error 4
 
 validate_loop:
     # Check if all 5 ships have been processed
