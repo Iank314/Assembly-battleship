@@ -264,10 +264,6 @@ T_orientation4:
     j piece_done
 
 
-# Function: placePieceOnBoard
-# Arguments: 
-#   $a0 - address of piece struct
-#   $a1 - ship_num
 placePieceOnBoard:
     # Function prologue
     addi $sp, $sp, -16         # Allocate stack space
@@ -322,9 +318,11 @@ check_out_of_bounds:
 
 mixed_error:
     li   $v0, 3                    # Return 3 if both errors occurred
+    j    piece_cleanup
 
 success:
     li   $v0, 0                    # Return 0 for successful placement
+    j    return_from_function      # Skip zeroOut on success
 
 piece_cleanup:
     jal  zeroOut                   # Call zeroOut to reset the board
@@ -342,6 +340,7 @@ return_from_function:
     lw   $s2, 0($sp)               # Restore $s2
     addi $sp, $sp, 16              # Deallocate stack space
     jr   $ra                       # Return to caller
+
 
 
 
