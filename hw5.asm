@@ -117,6 +117,7 @@ placePieceOnBoard:
 piece_done:
     # Check accumulated errors and return appropriate code
     beq  $s2, $zero, success       # No errors: return 0
+
     li   $t0, 1                    # Load error code 1 (occupied)
     andi $t1, $s2, $t0             # Check if occupied error occurred
     beq  $t1, $zero, check_out_of_bounds
@@ -132,27 +133,6 @@ check_out_of_bounds:
 
 mixed_error:
     li   $v0, 3                    # Return 3 if both errors occurred
-
-success:
-    li   $v0, 0                    # Return 0 for successful placement
-
-piece_cleanup:
-    jal  zeroOut                   # Call zeroOut to reset the board
-    j    return_from_function
-
-piece_invalid_type:
-    # Handle invalid piece type
-    li   $v0, -1                   # Error code for invalid type (optional)
-    j    piece_cleanup
-
-return_from_function:
-    # Function epilogue
-    lw   $ra, 12($sp)              # Restore return address
-    lw   $s3, 8($sp)               # Restore $s3
-    lw   $s4, 4($sp)               # Restore $s4
-    lw   $s2, 0($sp)               # Restore $s2
-    addi $sp, $sp, 16              # Deallocate stack space
-    jr   $ra                       # Return to caller
 
 
 
