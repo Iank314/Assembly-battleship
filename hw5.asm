@@ -391,8 +391,8 @@ test_fit:
 
 validate_loop:
     # Check if all ships have been processed
-    li   $t0, 6                # Number of ships
-    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 6
+    li   $t0, 5                # Number of ships
+    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 5
 
     # Load ship type and orientation from the struct
     lw   $t1, 0($s1)           # $t1 = type
@@ -426,8 +426,8 @@ process_ships:
 
 place_loop:
     # Check if all ships have been processed
-    li   $t0, 6                # Number of ships
-    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 6
+    li   $t0, 5                # Number of ships
+    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 5
 
     # Place the current ship on the board
     move $a0, $s1              # Address of the current ship struct
@@ -442,6 +442,11 @@ place_loop:
 
 finalize_test_fit:
     # Prioritize errors correctly
+    # Check for type/orientation error
+    li   $t0, 4
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_error_4
+
     # Check for mixed error (occupied and out-of-bounds)
     li   $t0, 3                # Both occupied and out-of-bounds
     and  $t1, $s2, $t0
@@ -456,11 +461,6 @@ finalize_test_fit:
     li   $t0, 1
     and  $t1, $s2, $t0
     bne  $t1, $zero, return_error_1
-
-    # If no placement errors, check for type/orientation error
-    li   $t0, 4
-    and  $t1, $s2, $t0
-    bne  $t1, $zero, return_error_4
 
     # Return success if no errors
     li   $v0, 0                # Success
@@ -490,9 +490,6 @@ test_fit_epilogue:
     lw   $s2, 0($sp)           # Restore $s2
     addi $sp, $sp, 16          # Deallocate stack space
     jr   $ra                   # Return to caller
-
-
-
 
 
 
