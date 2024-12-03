@@ -374,7 +374,6 @@ return_from_function:
 
 
 
-
 test_fit:
     # Function Prologue
     addi $sp, $sp, -16         # Allocate stack space
@@ -389,12 +388,12 @@ test_fit:
 
     # Ensure starting address is word-aligned
     andi $t0, $a0, 3           # Check alignment
-    bne  $t0, $zero, return_error_4  # If not aligned, return error
+    bne  $t0, $zero, return_error_4  # If not aligned, return error 4
 
 validate_loop:
     # Check if all 5 ships have been processed
-    li   $t0, 6                # Constant for number of ships (adjust as needed)
-    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 6
+    li   $t0, 6                # Number of ships
+    beq  $s0, $t0, process_ships  # Exit validation loop if done
 
     # Load ship type and orientation from the struct
     lw   $t1, 0($s1)           # $t1 = type
@@ -424,12 +423,12 @@ process_ships:
 
 place_loop:
     # Check if all 5 ships have been processed
-    li   $t0, 6                # Constant for number of ships (adjust as needed)
-    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 6
+    li   $t0, 6                # Number of ships
+    beq  $s0, $t0, finalize_test_fit  # Exit loop if done
 
     # Place the current ship on the board
     move $a0, $s1              # Address of the current ship struct
-    addi $a1, $s0, 1           # Ship number is 1-based index
+    addi $a1, $s0, 1           # Ship number (1-based index)
     jal  placePieceOnBoard     # Call placePieceOnBoard
     or   $s2, $s2, $v0         # Accumulate errors
 
@@ -442,30 +441,40 @@ finalize_test_fit:
     # Check accumulated errors and return appropriate status
     beq  $s2, $zero, return_success  # If no errors, return success
 
-    # Return the highest error priority
-    andi $t0, $s2, 1           # Check for occupied error
-    bne  $t0, $zero, return_error_1
+    # Prioritize errors
+    li   $t0, 3                # Both occupied and out-of-bounds
+    and  $t1, $s2, $t0
+    beq  $t1, $t0, return_error_3  # If both errors, return 3
 
-    andi $t0, $s2, 2           # Check for out-of-bounds error
-    bne  $t0, $zero, return_error_2
+    li   $t0, 2                # Out-of-bounds
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_error_2
 
-    li   $v0, 3                # Return mixed error
+    li   $t0, 1                # Occupied
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_error_1
+
+    li   $v0, 4                # Default to type/orientation error
     j    test_fit_epilogue
 
 return_error_4:
-    li   $v0, 4                # Return orientation out-of-bounds error
+    li   $v0, 4                # Type or orientation out-of-bounds
     j    test_fit_epilogue
 
-return_error_1:
-    li   $v0, 1                # Return occupied error
+return_error_3:
+    li   $v0, 3                # Both occupied and out-of-bounds
     j    test_fit_epilogue
 
 return_error_2:
-    li   $v0, 2                # Return out-of-bounds error
+    li   $v0, 2                # Out-of-bounds error
+    j    test_fit_epilogue
+
+return_error_1:
+    li   $v0, 1                # Occupied error
     j    test_fit_epilogue
 
 return_success:
-    li   $v0, 0                # Return success
+    li   $v0, 0                # Success
 
 test_fit_epilogue:
     # Function Epilogue
@@ -475,6 +484,7 @@ test_fit_epilogue:
     lw   $s2, 0($sp)           # Restore $s2
     addi $sp, $sp, 16          # Deallocate stack space
     jr   $ra                   # Return to caller
+
 
 
 
