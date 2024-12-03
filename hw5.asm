@@ -229,43 +229,42 @@ out_of_bounds:
 
 T_orientation4:
     # Place the center tile of the T (middle of the horizontal bar)
-    move $a0, $s5          # row
-    addi $a0, $a0, 1       # row + 1 (shift one row down)
-    move $a1, $s6          # col
-    addi $a1, $a1, 1       # col (shift one column right)
+    move $a0, $s5
+    addi $a0, $a0, 1       # row + 1 (one row down)
+    move $a1, $s6
+    addi $a1, $a1, -1      # col - 1 (one column to the left)
     move $a2, $s1          # ship_num
     jal place_tile          # place the center tile
     or $s2, $s2, $v0       # accumulate error
 
     # Place the vertical tile above the center
     move $a0, $s5
-    addi $a0, $a0, 0       # row (same as center row - 1 from base)
+    addi $a0, $a0, 0       # row (same as adjusted)
     move $a1, $s6
-    addi $a1, $a1, 1       # col + 1 (same column as center)
+    addi $a1, $a1, -1      # col - 1 (same column as adjusted center)
     move $a2, $s1
     jal place_tile          # place the vertical tile above
     or $s2, $s2, $v0       # accumulate error
 
     # Place the vertical tile below the center
     move $a0, $s5
-    addi $a0, $a0, 2       # row + 2 (one row below center)
+    addi $a0, $a0, 2       # row + 2 (one row below adjusted center)
     move $a1, $s6
-    addi $a1, $a1, 1       # col + 1 (same column as center)
+    addi $a1, $a1, -1      # col - 1 (same column as adjusted center)
     move $a2, $s1
     jal place_tile          # place the vertical tile below
     or $s2, $s2, $v0       # accumulate error
 
     # Place the horizontal tile to the right of the center
     move $a0, $s5
-    addi $a0, $a0, 1       # row + 1 (same as center row)
+    addi $a0, $a0, 1       # row + 1 (same row as adjusted center)
     move $a1, $s6
-    addi $a1, $a1, 2       # col + 2 (one column to the right of center)
+    addi $a1, $a1, 0       # col (directly right of adjusted center)
     move $a2, $s1
     jal place_tile          # place the horizontal tile to the right
     or $s2, $s2, $v0       # accumulate error
 
     j piece_done            # jump to piece_done label
-
 
 
 
