@@ -228,35 +228,35 @@ out_of_bounds:
 
 
 T_orientation4:
-    # Place the center of the T
+    # Place the center tile of the T (middle of the horizontal bar)
     move $a0, $s5          # row
     move $a1, $s6          # col
     move $a2, $s1          # ship_num
     jal place_tile          # place the center tile
     or $s2, $s2, $v0       # accumulate error
 
-    # Place the left tile of the horizontal bar
-    move $a0, $s5          # row
-    move $a1, $s6
-    addi $a1, $a1, -1      # col - 1 (left of center)
+    # Place the vertical tile above the center
+    move $a0, $s5
+    addi $a0, $a0, -1      # row - 1 (one row up)
+    move $a1, $s6          # col (same column as the center)
     move $a2, $s1
-    jal place_tile          # place the left tile
-    or $s2, $s2, $v0       # accumulate error
-
-    # Place the right tile of the horizontal bar
-    move $a0, $s5          # row
-    move $a1, $s6
-    addi $a1, $a1, 1       # col + 1 (right of center)
-    move $a2, $s1
-    jal place_tile          # place the right tile
+    jal place_tile          # place the vertical tile above
     or $s2, $s2, $v0       # accumulate error
 
     # Place the vertical tile below the center
     move $a0, $s5
-    addi $a0, $a0, 1       # row + 1 (below the center)
-    move $a1, $s6          # col (center column)
+    addi $a0, $a0, 1       # row + 1 (one row down)
+    move $a1, $s6          # col (same column as the center)
     move $a2, $s1
-    jal place_tile          # place the vertical tile
+    jal place_tile          # place the vertical tile below
+    or $s2, $s2, $v0       # accumulate error
+
+    # Place the horizontal tile to the right of the center
+    move $a0, $s5          # row
+    move $a1, $s6
+    addi $a1, $a1, 1       # col + 1 (one column to the right)
+    move $a2, $s1
+    jal place_tile          # place the horizontal tile to the right
     or $s2, $s2, $v0       # accumulate error
 
     j piece_done            # jump to piece_done label
