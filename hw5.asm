@@ -384,14 +384,14 @@ test_fit:
     move $s1, $a0              # $s1 points to the start of the array of ships
     li   $s2, 0                # Initialize error to 0
 
-    # Ensure starting address is aligned
-    andi $t0, $s1, 3           # Check if $s1 is word-aligned (last 2 bits == 0)
-    bne  $t0, $zero, return_error_4  # If not aligned, return error 4
+    # Ensure starting address is word-aligned
+    andi $t0, $a0, 3           # Check alignment
+    bne  $t0, $zero, return_error_4  # If not aligned, return error
 
 validate_loop:
     # Check if all 5 ships have been processed
-    li   $t0, 5                # Constant for number of ships
-    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 5
+    li   $t0, 6                # Constant for number of ships (adjust as needed)
+    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 6
 
     # Load ship type and orientation from the struct
     lw   $t1, 0($s1)           # $t1 = type
@@ -421,8 +421,8 @@ process_ships:
 
 place_loop:
     # Check if all 5 ships have been processed
-    li   $t0, 5                # Constant for number of ships
-    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 5
+    li   $t0, 6                # Constant for number of ships (adjust as needed)
+    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 6
 
     # Place the current ship on the board
     move $a0, $s1              # Address of the current ship struct
@@ -472,6 +472,7 @@ test_fit_epilogue:
     lw   $s2, 0($sp)           # Restore $s2
     addi $sp, $sp, 16          # Deallocate stack space
     jr   $ra                   # Return to caller
+
 
 
 
