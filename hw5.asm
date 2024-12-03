@@ -13,12 +13,67 @@ extra_newline: .asciiz "\n\n" # Extra newline at end
 # Function: zeroOut
 # Arguments: None
 # Returns: void
+# Uses global variables: board (char[]), board_width (int), board_height (int)
 zeroOut:
-    # Function prologue
+    # Function Prologue
+    addi $sp, $sp, -16         # Allocate stack space (4 words)
+    sw   $ra, 12($sp)          # Save return address
+    sw   $s0, 8($sp)           # Save $s0 (row counter)
+    sw   $s1, 4($sp)           # Save $s1 (column counter)
+    sw   $s2, 0($sp)           # Save $s2 (board_width)
 
-zero_done:
-    # Function epilogue
-    jr $ra
+    # Load board_width and board_height once
+    lw   $s2, board_width      # $s2 = board_width (e.g., 5)
+    lw   $s3, board_height     # $s3 = board_height (e.g., 5)
+
+    li   $s0, 0                # Initialize row counter ($s0) to 0
+
+outer_zero_loop:
+    # Compare row counter with board_height
+    beq  $s0, $s3, end_zeroOut   # If row == board_height, exit loop
+
+    li   $s1, 0                # Initialize column counter ($s1) to 0
+
+inner_zero_loop:
+    # Compare column counter with board_width
+    beq  $s1, $s2, zero_newline  # If col == board_width, move to next row
+
+    # Calculate index = row * board_width + col
+    mul  $t0, $s0, $s2         # $t0 = row * board_width
+    add  $t0, $t0, $s1         # $t0 = row * board_width + col
+
+    # Load the base address of board
+    la   $t1, board            # Load address of board into $t1
+
+    # Calculate the address of board[index]
+    add  $t1, $t1, $t0         # $t1 = board + index
+
+    # Store 0 to board[index]
+    sb   $zero, 0($t1)         # board[index] = 0
+
+    # Increment column counter
+    addi $s1, $s1, 1           # col++
+
+    j    inner_zero_loop        # Repeat inner loop
+
+zero_newline:
+    # After completing a row, optionally perform actions (none needed here)
+    addi $s0, $s0, 1            # row++
+
+    j    outer_zero_loop        # Repeat outer loop
+
+end_zeroOut:
+    # Function Epilogue
+    lw   $ra, 12($sp)          # Restore return address
+    lw   $s0, 8($sp)           # Restore $s0 (row counter)
+    lw   $s1, 4($sp)           # Restore $s1 (column counter)
+    lw   $s2, 0($sp)           # Restore $s2 (board_width)
+    addi $sp, $sp, 16          # Deallocate stack space
+
+    jr   $ra                   # Return to caller
+
+
+
 
 # Function: placePieceOnBoard
 # Arguments: 
