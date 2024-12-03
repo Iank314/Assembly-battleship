@@ -346,12 +346,102 @@ return_from_function:
 
 
 
-# Function: test_fit
-# Arguments: 
-#   $a0 - address of piece array (5 pieces)
 test_fit:
-    # Function prologue
-    jr $ra
+    # Function Prologue
+    addi $sp, $sp, -16         # Allocate stack space
+    sw   $ra, 12($sp)          # Save return address
+    sw   $s0, 8($sp)           # Save $s0 (loop counter)
+    sw   $s1, 4($sp)           # Save $s1 (ship struct address)
+    sw   $s2, 0($sp)           # Save $s2 (total error)
+
+    li   $s0, 0                # Initialize loop counter to 0
+    move $s1, $a0              # $s1 points to the start of the array of ships
+    li   $s2, 0                # Initialize  error to 0
+
+validate_loop:
+    # Check if all 5 ships have been processed
+    li   $t0, 5                # Constant for number of ships
+    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 5
+
+    # Load ship type and orientation from the struct
+    lw   $t1, 0($s1)           # $t1 = type
+    lw   $t2, 4($s1)           # $t2 = orientation
+
+    # Validate type (1 <= type <= 7)
+    li   $t3, 1
+    blt  $t1, $t3, return_error_4  # If type < 1, return 4
+    li   $t3, 7
+    bgt  $t1, $t3, return_error_4  # If type > 7, return 4
+
+    # Validate orientation (1 <= orientation <= 4)
+    li   $t3, 1
+    blt  $t2, $t3, return_error_4  # If orientation < 1, return 4
+    li   $t3, 4
+    bgt  $t2, $t3, return_error_4  # If orientation > 4, return 4
+
+    # Increment to the next ship struct (4 fields per struct, 16 bytes total)
+    addi $s1, $s1, 16
+    addi $s0, $s0, 1           # Increment loop counter
+    j    validate_loop         # Repeat validation loop
+
+process_ships:
+    # Reset loop counter and pointer to the start of the array
+    li   $s0, 0
+    move $s1, $a0
+
+place_loop:
+    # Check if all 5 ships have been processed
+    li   $t0, 5                # Constant for number of ships
+    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 5
+
+    # Place the current ship on the board
+    move $a0, $s1              # Address of the current ship struct
+    addi $a1, $s0, 1           # Ship number is 1-based index
+    jal  placePieceOnBoard     # Call placePieceOnBoard
+    or   $s2, $s2, $v0         # Accumulate errors
+
+    # Increment to the next ship struct
+    addi $s1, $s1, 16          # Move to the next ship struct
+    addi $s0, $s0, 1           # Increment loop counter
+    j    place_loop            # Repeat placement loop
+
+finalize_test_fit:
+    # Check accumulated errors and return appropriate status
+    beq  $s2, $zero, return_success  # If no errors, return success
+
+    # Return the highest error priority
+    andi $t0, $s2, 1           # Check for occupied error
+    bne  $t0, $zero, return_error_1
+
+    andi $t0, $s2, 2           # Check for out-of-bounds error
+    bne  $t0, $zero, return_error_2
+
+    li   $v0, 3                # Return mixed error
+    j    test_fit_epilogue
+
+return_error_4:
+    li   $v0, 4                # Return type/orientation out-of-bounds error
+    j    test_fit_epilogue
+
+return_error_1:
+    li   $v0, 1                # Return occupied error
+    j    test_fit_epilogue
+
+return_error_2:
+    li   $v0, 2                # Return out-of-bounds error
+    j    test_fit_epilogue
+
+return_success:
+    li   $v0, 0                # Return success
+
+test_fit_epilogue:
+    # Function Epilogue
+    lw   $ra, 12($sp)          # Restore return address
+    lw   $s0, 8($sp)           # Restore $s0
+    lw   $s1, 4($sp)           # Restore $s1
+    lw   $s2, 0($sp)           # Restore $s2
+    addi $sp, $sp, 16          # Deallocate stack space
+    jr   $ra                   # Return to caller
 
 
 
