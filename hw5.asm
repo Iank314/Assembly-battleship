@@ -393,14 +393,10 @@ test_fit:
     move $s1, $a0              # $s1 points to the start of the array of ships
     li   $s2, 0                # Reset error register
 
-    # Ensure starting address is word-aligned
-    andi $t0, $a0, 3           # Check alignment
-    bne  $t0, $zero, return_error_4  # If not aligned, return error 4
-
 validate_loop:
-    # Check if all ships have been processed
-    li   $t0, 6                # Number of ships
-    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 6
+    # Check if all ships have been validated
+    li   $t0, 5                # Number of ships
+    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 5
 
     # Load ship type and orientation from the struct
     lw   $t1, 0($s1)           # $t1 = type
@@ -412,11 +408,11 @@ validate_loop:
     li   $t3, 7
     bgt  $t1, $t3, return_error_4  # If type > 7, return error 4
 
-    # Validate orientation (1 <= orientation <= 4)
-    li   $t3, 1
-    blt  $t2, $t3, return_error_4  # If orientation < 1, return error 4
-    li   $t3, 4
-    bgt  $t2, $t3, return_error_4  # If orientation > 4, return error 4
+    # Validate orientation (0 <= orientation <= 3)
+    li   $t3, 0
+    blt  $t2, $t3, return_error_4  # If orientation < 0, return error 4
+    li   $t3, 3
+    bgt  $t2, $t3, return_error_4  # If orientation > 3, return error 4
 
     # Increment to the next ship struct (4 fields per struct, 16 bytes total)
     addi $s1, $s1, 16
@@ -430,8 +426,8 @@ process_ships:
 
 place_loop:
     # Check if all ships have been processed
-    li   $t0, 6                # Number of ships
-    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 6
+    li   $t0, 5                # Number of ships
+    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 5
 
     # Place the current ship on the board
     move $a0, $s1              # Address of the current ship struct
