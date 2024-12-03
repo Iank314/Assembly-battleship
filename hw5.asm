@@ -273,62 +273,34 @@ T_orientation4:
 # Returns:
 #   $v0 - 0 if successful, 1 if occupied, 2 if out of bounds, 3 if 
             both errors occur.
-# Uses global variables: board (char[]), board_width (int), 
-                         board_height (int)
+# Uses global variables: board (char[]), board_width (int), board_height (int)
 
 placePieceOnBoard:
-    # Function prologue
-    addi $sp, $sp, -16         # Allocate stack space
-    sw   $ra, 12($sp)          # Save return address
-    sw   $s3, 8($sp)           # Save $s3
-    sw   $s4, 4($sp)           # Save $s4
-    sw   $s2, 0($sp)           # Save $s2
-
-    # Load piece fields from struct pointed to by $a0
-    lw   $s3, 0($a0)           # $s3 = type
-    lw   $s4, 4($a0)           # $s4 = orientation
-    lw   $s5, 8($a0)           # $s5 = row_loc
-    lw   $s6, 12($a0)          # $s6 = col_loc
-    move $s1, $a1              # $s1 = ship_num (value to place in board)
-
     # Initialize accumulated error register
     li   $s2, 0                # $s2 = 0 (no errors initially)
+
+    # Load board height
+    lw   $s3, board_height     # $s3 = board_height 
 
     # Branch to the appropriate piece placement subroutine
     li   $t0, 1
     beq  $s3, $t0, piece_square
-    li   $t0, 2
-    beq  $s3, $t0, piece_line
-    li   $t0, 3
-    beq  $s3, $t0, piece_reverse_z
-    li   $t0, 4
-    beq  $s3, $t0, piece_L
-    li   $t0, 5
-    beq  $s3, $t0, piece_z
-    li   $t0, 6
-    beq  $s3, $t0, piece_reverse_L
-    li   $t0, 7
-    beq  $s3, $t0, piece_T
-    j    piece_invalid_type    # Invalid type
 
 piece_done:
-    # Check accumulated errors and return appropriate code
-    beq  $s2, $zero, success       # No errors: return 0
-
     # Check for both errors simultaneously
-    li   $t0, 3                   # Bitmask for both errors
+    li   $t0, 3                   # Check if both bits (occupied and out of bounds) are set
     and  $t1, $s2, $t0
-    bne  $t1, $zero, mixed_error  # If both errors, return 3
+    beq  $t1, $t0, mixed_error    # If both errors, go to mixed_error
 
     # Check if only occupied error occurred
     li   $t0, 1
     and  $t1, $s2, $t0
-    bne  $t1, $zero, return_occupied
+    bne  $t1, $zero, return_error_1
 
     # Check if only out-of-bounds error occurred
     li   $t0, 2
     and  $t1, $s2, $t0
-    bne  $t1, $zero, return_out_of_bounds
+    bne  $t1, $zero, return_error_2
 
 mixed_error:
     li   $v0, 3                    # Return 3 for both errors
