@@ -236,7 +236,7 @@ T_orientation4:
     addi $a1, $a1, 0       # col (one column left)
     move $a2, $s1          # ship_num
     jal place_tile          # place the center tile
-    or $s2, $s2, $v0       # accumulate error
+    or $s2, $s2, $v0       # tracking error
 
     # Place the vertical tile above the center
     move $a0, $s5
@@ -245,7 +245,7 @@ T_orientation4:
     addi $a1, $a1, 0       # col 
     move $a2, $s1
     jal place_tile          # place the vertical tile above
-    or $s2, $s2, $v0       # accumulate error
+    or $s2, $s2, $v0       # tracking error
 
     # Place the vertical tile below the center
     move $a0, $s5
@@ -254,7 +254,7 @@ T_orientation4:
     addi $a1, $a1, 0       # col
     move $a2, $s1
     jal place_tile          # place the vertical tile below
-    or $s2, $s2, $v0       # accumulate error
+    or $s2, $s2, $v0       # tracking error
 
     # Place the horizontal tile to the right of the center
     move $a0, $s5
@@ -263,7 +263,7 @@ T_orientation4:
     addi $a1, $a1, 1       # col + 1
     move $a2, $s1
     jal place_tile          # place the horizontal tile to the right
-    or $s2, $s2, $v0       # accumulate error
+    or $s2, $s2, $v0       # tracking error
 
     j piece_done            # jump to piece_done label
 
@@ -298,7 +298,7 @@ placePieceOnBoard:
     andi $t0, $a0, 3           # Check alignment of $a0
     bne  $t0, $zero, piece_invalid_type  # If not aligned, handle as invalid type
 
-    # Initialize accumulated error register
+    # Initialize tracking error register
     li   $s2, 0                # $s2 = 0 (no errors initially)
 
     # Load piece fields from struct pointed to by $a0
@@ -388,83 +388,85 @@ test_fit:
     sw   $ra, 12($sp)           # Save return address
     sw   $s0, 8($sp)            # Save $s0 (piece counter)
     sw   $s1, 4($sp)            # Save $s1 (temporary register)
-    sw   $s2, 0($sp)            # Save $s2 (error accumulator)
+    sw   $s2, 0($sp)            # Save $s2 (error tracker)
 
-    li   $s2, 0                 # Initialize error accumulator to 0
+    li   $s2, 0                 # Initialize error tracker to 0
     li   $s0, 0                 # Initialize piece counter to 0
 
 piece_loop:
     # Check if all 5 pieces have been processed
     li   $t0, 5                 # Set loop limit to 5
-    beq  $s0, $t0, finalize_fit # If all pieces are processed, finalize
+    beq  $s0, $t0, test_fit_finalize # If all pieces are processed, finalize
 
     # Calculate address of current piece in the array
-    mul  $t1, $s0, 16           # Each piece is 16 bytes (4 fields of 4 bytes)
-    add  $t1, $a0, $t1          # $t1 = address of current piece
+    li   $t1, 16                # Load piece size
+    mul  $t2, $s0, $t1          # $t2 = piece index * 16
+    add  $t2, $a0, $t2          # $t2 = address of current piece
 
     # Load piece type and orientation
-    lw   $t2, 0($t1)            # $t2 = type
-    lw   $t3, 4($t1)            # $t3 = orientation
+    lw   $t3, 0($t2)            # $t3 = type
+    lw   $t4, 4($t2)            # $t4 = orientation
 
     # Check if type is valid (1 <= type <= 7)
-    li   $t4, 1
-    blt  $t2, $t4, invalid_piece
-    li   $t4, 7
-    bgt  $t2, $t4, invalid_piece
+    li   $t5, 1
+    blt  $t3, $t5, test_fit_invalid_piece
+    li   $t5, 7
+    bgt  $t3, $t5, test_fit_invalid_piece
 
     # Check if orientation is valid (0 <= orientation <= 3)
-    li   $t4, 0
-    blt  $t3, $t4, invalid_piece
-    li   $t4, 3
-    bgt  $t3, $t4, invalid_piece
+    li   $t5, 0
+    blt  $t4, $t5, test_fit_invalid_piece
+    li   $t5, 3
+    bgt  $t4, $t5, test_fit_invalid_piece
 
     # Call placePieceOnBoard for valid piece
-    move $a0, $t1               # Address of the current piece
-    li   $a1, $s0               # ship_num = piece index (0 to 4)
+    move $a0, $t2               # Address of the current piece
+    li   $a1, 0                 # Use temporary $a1 for ship_num
+    add  $a1, $s0, $zero        # $a1 = piece index (0 to 4)
     jal  placePieceOnBoard      # Call placePieceOnBoard
-    or   $s2, $s2, $v0          # Track error status
+    or   $s2, $s2, $v0          # tracking error status
 
-    j    next_piece             # Move to the next piece
+    j    test_fit_next_piece    # Move to the next piece
 
-invalid_piece:
+test_fit_invalid_piece:
     li   $v0, 4                 # Return 4 for invalid type or orientation
-    j    cleanup                # Cleanup
+    j    test_fit_cleanup       # Jump to cleanup
 
-next_piece:
+test_fit_next_piece:
     addi $s0, $s0, 1            # Increment piece counter
     j    piece_loop             # Repeat loop for next piece
 
-finalize_fit:
-    # Check accumulated error status
+test_fit_finalize:
+    # Check tracking error status
     li   $t0, 3                 # Check for both errors
     and  $t1, $s2, $t0
-    beq  $t1, $t0, mixed_error  # If both errors, return 3
+    beq  $t1, $t0, test_fit_mixed_error # If both errors, return 3
 
     li   $t0, 1                 # Check for occupied error
     and  $t1, $s2, $t0
-    bne  $t1, $zero, return_occupied
+    bne  $t1, $zero, test_fit_return_occupied
 
     li   $t0, 2                 # Check for out-of-bounds error
     and  $t1, $s2, $t0
-    bne  $t1, $zero, return_out_of_bounds
+    bne  $t1, $zero, test_fit_return_out_of_bounds
 
-success_fit:
+test_fit_success_fit:
     li   $v0, 0                 # Return 0 for success
-    j    cleanup
+    j    test_fit_cleanup
 
-mixed_error:
+test_fit_mixed_error:
     li   $v0, 3                 # Return 3 for both errors
-    j    cleanup
+    j    test_fit_cleanup
 
-return_occupied:
+test_fit_return_occupied:
     li   $v0, 1                 # Return 1 for occupied error
-    j    cleanup
+    j    test_fit_cleanup
 
-return_out_of_bounds:
+test_fit_return_out_of_bounds:
     li   $v0, 2                 # Return 2 for out-of-bounds error
-    j    cleanup
+    j    test_fit_cleanup
 
-cleanup:
+test_fit_cleanup:
     # Function Epilogue
     lw   $ra, 12($sp)           # Restore return address
     lw   $s0, 8($sp)            # Restore $s0
@@ -472,6 +474,7 @@ cleanup:
     lw   $s2, 0($sp)            # Restore $s2
     addi $sp, $sp, 16           # Deallocate stack space
     jr   $ra                    # Return to caller
+
 
 
 .include "skeleton.asm"
