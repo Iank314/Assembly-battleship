@@ -382,124 +382,96 @@ return_from_function:
 #   $v0 - 0 if successful, 1 if occupied, 2 if out of bounds, 3 if both errors occur, 4 if either the type or orientation is out of bounds.
 # Uses global variables: board (char[]), board_width (int), board_height (int)
 
-
 test_fit:
-    # Function prologue
-    addi $sp, $sp, -16         # Allocate stack space
-    sw   $ra, 12($sp)          # Save return address
-    sw   $s0, 8($sp)           # Save $s0 (loop counter)
-    sw   $s1, 4($sp)           # Save $s1 (pointer to current piece)
-    sw   $s2, 0($sp)           # Save $s2 (accumulated error)
+    # Function Prologue
+    addi $sp, $sp, -16          # Allocate stack space
+    sw   $ra, 12($sp)           # Save return address
+    sw   $s0, 8($sp)            # Save $s0 (piece counter)
+    sw   $s1, 4($sp)            # Save $s1 (temporary register)
+    sw   $s2, 0($sp)            # Save $s2 (error accumulator)
 
-    li   $s0, 0                # Initialize loop counter ($s0) to 0
-    move $s1, $a0              # $s1 points to the start of the piece array
-    li   $s2, 0                # Initialize accumulated error ($s2)
+    li   $s2, 0                 # Initialize error accumulator to 0
+    li   $s0, 0                 # Initialize piece counter to 0
 
-validate_pieces:
-    # Check if all 5 pieces are processed
-    li   $t0, 5
-    beq  $s0, $t0, try_place_pieces  # If counter == 5, go to placing pieces
+piece_loop:
+    # Check if all 5 pieces have been processed
+    li   $t0, 5                 # Set loop limit to 5
+    beq  $s0, $t0, finalize_fit # If all pieces are processed, finalize
 
-    # Load the type and orientation from the current piece
-    lw   $t1, 0($s1)           # $t1 = type (field 0 of struct)
-    lw   $t2, 4($s1)           # $t2 = orientation (field 4 of struct)
+    # Calculate address of current piece in the array
+    mul  $t1, $s0, 16           # Each piece is 16 bytes (4 fields of 4 bytes)
+    add  $t1, $a0, $t1          # $t1 = address of current piece
 
-    # Check if type is within valid range (1 to 7)
-    li   $t3, 1
-    blt  $t1, $t3, invalid_type_or_orientation  # If type < 1, invalid
-    li   $t3, 7
-    bgt  $t1, $t3, invalid_type_or_orientation  # If type > 7, invalid
+    # Load piece type and orientation
+    lw   $t2, 0($t1)            # $t2 = type
+    lw   $t3, 4($t1)            # $t3 = orientation
 
-    # Check if orientation is within valid range (0 to 3)
-    li   $t3, 0
-    blt  $t2, $t3, invalid_type_or_orientation  # If orientation < 0, invalid
-    li   $t3, 3
-    bgt  $t2, $t3, invalid_type_or_orientation  # If orientation > 3, invalid
+    # Check if type is valid (1 <= type <= 7)
+    li   $t4, 1
+    blt  $t2, $t4, invalid_piece
+    li   $t4, 7
+    bgt  $t2, $t4, invalid_piece
 
-    # Move to the next piece
-    addi $s1, $s1, 16          # Advance pointer to next piece (struct size 16 bytes)
-    addi $s0, $s0, 1           # Increment loop counter
-    j    validate_pieces       # Repeat validation loop
+    # Check if orientation is valid (0 <= orientation <= 3)
+    li   $t4, 0
+    blt  $t3, $t4, invalid_piece
+    li   $t4, 3
+    bgt  $t3, $t4, invalid_piece
 
-invalid_type_or_orientation:
-    li   $v0, 4                # Return 4 for invalid type or orientation
-    j    end_test_fit          # Exit function
+    # Call placePieceOnBoard for valid piece
+    move $a0, $t1               # Address of the current piece
+    li   $a1, $s0               # ship_num = piece index (0 to 4)
+    jal  placePieceOnBoard      # Call placePieceOnBoard
+    or   $s2, $s2, $v0          # Track error status
 
-try_place_pieces:
-    # Reset loop counter and pointer to piece array
-    li   $s0, 0
-    move $s1, $a0
-    li   $t4, 0                # $t4 accumulates occupied errors
-    li   $t5, 0                # $t5 accumulates out-of-bounds errors
+    j    next_piece             # Move to the next piece
 
-place_loop:
-    # Check if all 5 pieces are processed
-    li   $t0, 5
-    beq  $s0, $t0, check_errors  # If counter == 5, check errors
+invalid_piece:
+    li   $v0, 4                 # Return 4 for invalid type or orientation
+    j    cleanup                # Cleanup
 
-    # Call placePieceOnBoard for the current piece
-    move $a0, $s1              # Pass pointer to current piece as argument
-    li   $a1, 1                # Pass ship_num (can be adjusted if needed)
-    jal  placePieceOnBoard     # Call placePieceOnBoard
+next_piece:
+    addi $s0, $s0, 1            # Increment piece counter
+    j    piece_loop             # Repeat loop for next piece
 
-    # Handle the returned error from placePieceOnBoard
-    li   $t0, 1
-    beq  $v0, $t0, mark_occupied  # If error is 1 (occupied), mark it
-    li   $t0, 2
-    beq  $v0, $t0, mark_out_of_bounds  # If error is 2 (out of bounds), mark it
+finalize_fit:
+    # Check accumulated error status
+    li   $t0, 3                 # Check for both errors
+    and  $t1, $s2, $t0
+    beq  $t1, $t0, mixed_error  # If both errors, return 3
 
-    # Accumulate general error
-    or   $s2, $s2, $v0         # Accumulate errors
-    j    continue_place_loop
+    li   $t0, 1                 # Check for occupied error
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_occupied
 
-mark_occupied:
-    ori  $t4, $t4, 1           # Mark occupied error
-    j    continue_place_loop
+    li   $t0, 2                 # Check for out-of-bounds error
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_out_of_bounds
 
-mark_out_of_bounds:
-    ori  $t5, $t5, 1           # Mark out-of-bounds error
+success_fit:
+    li   $v0, 0                 # Return 0 for success
+    j    cleanup
 
-continue_place_loop:
-    # Move to the next piece
-    addi $s1, $s1, 16          # Advance pointer to next piece (struct size 16 bytes)
-    addi $s0, $s0, 1           # Increment loop counter
-    j    place_loop            # Repeat placing loop
-
-check_errors:
-    # Combine errors to determine the result
-    andi $t0, $t4, 1
-    andi $t1, $t5, 1
-    and  $t2, $t0, $t1         # Check if both errors occurred
-    beq  $t2, 1, return_both_errors  # If both errors occurred, return 3
-
-    # Check if only occupied error occurred
-    beq  $t0, 1, return_occupied
-
-    # Check if only out-of-bounds error occurred
-    beq  $t1, 1, return_out_of_bounds
-
-    # If no errors, return success
-    li   $v0, 0
-    j    end_test_fit
-
-return_both_errors:
-    li   $v0, 3                # Return 3 for both errors
-    j    end_test_fit
+mixed_error:
+    li   $v0, 3                 # Return 3 for both errors
+    j    cleanup
 
 return_occupied:
-    li   $v0, 1                # Return 1 for occupied error
-    j    end_test_fit
+    li   $v0, 1                 # Return 1 for occupied error
+    j    cleanup
 
 return_out_of_bounds:
-    li   $v0, 2                # Return 2 for out-of-bounds error
+    li   $v0, 2                 # Return 2 for out-of-bounds error
+    j    cleanup
 
-end_test_fit:
-    # Function epilogue
-    lw   $ra, 12($sp)          # Restore return address
-    lw   $s0, 8($sp)           # Restore $s0
-    lw   $s1, 4($sp)           # Restore $s1
-    lw   $s2, 0($sp)           # Restore $s2
-    addi $sp, $sp, 16          # Deallocate stack space
-    jr   $ra                   # Return to caller
+cleanup:
+    # Function Epilogue
+    lw   $ra, 12($sp)           # Restore return address
+    lw   $s0, 8($sp)            # Restore $s0
+    lw   $s1, 4($sp)            # Restore $s1
+    lw   $s2, 0($sp)            # Restore $s2
+    addi $sp, $sp, 16           # Deallocate stack space
+    jr   $ra                    # Return to caller
+
 
 .include "skeleton.asm"
