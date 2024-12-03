@@ -232,16 +232,16 @@ T_orientation4:
     move $a0, $s5
     addi $a0, $a0, 1       # row + 1 (one row down)
     move $a1, $s6
-    addi $a1, $a1, -1      # col - 1 (one column to the left)
+    addi $a1, $a1, 0       # col (one column left adjustment already handled)
     move $a2, $s1          # ship_num
     jal place_tile          # place the center tile
     or $s2, $s2, $v0       # accumulate error
 
     # Place the vertical tile above the center
     move $a0, $s5
-    addi $a0, $a0, 0       # row (same as adjusted)
+    addi $a0, $a0, 0       # row (one row up from center)
     move $a1, $s6
-    addi $a1, $a1, -1      # col - 1 (same column as adjusted center)
+    addi $a1, $a1, 0       # col (aligned with adjusted center)
     move $a2, $s1
     jal place_tile          # place the vertical tile above
     or $s2, $s2, $v0       # accumulate error
@@ -250,7 +250,7 @@ T_orientation4:
     move $a0, $s5
     addi $a0, $a0, 2       # row + 2 (one row below adjusted center)
     move $a1, $s6
-    addi $a1, $a1, -1      # col - 1 (same column as adjusted center)
+    addi $a1, $a1, 0       # col (aligned with adjusted center)
     move $a2, $s1
     jal place_tile          # place the vertical tile below
     or $s2, $s2, $v0       # accumulate error
@@ -259,12 +259,14 @@ T_orientation4:
     move $a0, $s5
     addi $a0, $a0, 1       # row + 1 (same row as adjusted center)
     move $a1, $s6
-    addi $a1, $a1, 0       # col (directly right of adjusted center)
+    addi $a1, $a1, 1       # col + 1 (directly right of adjusted center)
     move $a2, $s1
     jal place_tile          # place the horizontal tile to the right
     or $s2, $s2, $v0       # accumulate error
 
     j piece_done            # jump to piece_done label
+
+
 
 
 
