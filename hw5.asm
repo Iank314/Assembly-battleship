@@ -275,15 +275,39 @@ T_orientation4:
 # Uses global variables: board (char[]), board_width (int), board_height (int)
 
 placePieceOnBoard:
+    # Function prologue
+    addi $sp, $sp, -16         # Allocate stack space
+    sw   $ra, 12($sp)          # Save return address
+    sw   $s3, 8($sp)           # Save $s3
+    sw   $s4, 4($sp)           # Save $s4
+    sw   $s2, 0($sp)           # Save $s2
+
     # Initialize accumulated error register
     li   $s2, 0                # $s2 = 0 (no errors initially)
 
-    # Load board height
-    lw   $s3, board_height     # $s3 = board_height 
+    # Load piece fields from struct pointed to by $a0
+    lw   $s3, 0($a0)           # $s3 = type
+    lw   $s4, 4($a0)           # $s4 = orientation
+    lw   $s5, 8($a0)           # $s5 = row location
+    lw   $s6, 12($a0)          # $s6 = column location
+    move $s1, $a1              # $s1 = ship_num (value to place in board)
 
     # Branch to the appropriate piece placement subroutine
     li   $t0, 1
     beq  $s3, $t0, piece_square
+    li   $t0, 2
+    beq  $s3, $t0, piece_line
+    li   $t0, 3
+    beq  $s3, $t0, piece_reverse_z
+    li   $t0, 4
+    beq  $s3, $t0, piece_L
+    li   $t0, 5
+    beq  $s3, $t0, piece_z
+    li   $t0, 6
+    beq  $s3, $t0, piece_reverse_L
+    li   $t0, 7
+    beq  $s3, $t0, piece_T
+    j    piece_invalid_type    # Invalid type
 
 piece_done:
     # Check for both errors simultaneously
@@ -294,12 +318,16 @@ piece_done:
     # Check if only occupied error occurred
     li   $t0, 1
     and  $t1, $s2, $t0
-    bne  $t1, $zero, return_error_1
+    bne  $t1, $zero, return_occupied
 
     # Check if only out-of-bounds error occurred
     li   $t0, 2
     and  $t1, $s2, $t0
-    bne  $t1, $zero, return_error_2
+    bne  $t1, $zero, return_out_of_bounds
+
+success:
+    li   $v0, 0                    # Return 0 for successful placement
+    j    return_from_function      # Skip zeroOut on success
 
 mixed_error:
     li   $v0, 3                    # Return 3 for both errors
@@ -313,17 +341,13 @@ return_out_of_bounds:
     li   $v0, 2                    # Return 2 for out-of-bounds error
     j    piece_cleanup
 
-success:
-    li   $v0, 0                    # Return 0 for successful placement
-    j    return_from_function      # Skip zeroOut on success
-
 piece_cleanup:
-    jal  zeroOut                   # Call zeroOut to reset the board
+    jal  zeroOut                   # Reset the board
     j    return_from_function
 
 piece_invalid_type:
-    li   $v0, -1                   # Set return value to -1 (invalid type error)
-    j    piece_cleanup             # Jump to cleanup
+    li   $v0, -1                   # Return -1 for invalid type
+    j    piece_cleanup
 
 return_from_function:
     # Function epilogue
@@ -333,6 +357,9 @@ return_from_function:
     lw   $s2, 0($sp)               # Restore $s2
     addi $sp, $sp, 16              # Deallocate stack space
     jr   $ra                       # Return to caller
+
+
+
 
 
 
