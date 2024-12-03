@@ -429,8 +429,9 @@ try_place_pieces:
     # Reset loop counter and pointer to piece array
     li   $s0, 0
     move $s1, $a0
+    li   $t4, 0                # $t4 accumulates occupied errors
+    li   $t5, 0                # $t5 accumulates out-of-bounds errors
 
-    # Loop through pieces and attempt to place them on the board
 place_loop:
     # Check if all 5 pieces are processed
     li   $t0, 5
@@ -438,30 +439,44 @@ place_loop:
 
     # Call placePieceOnBoard for the current piece
     move $a0, $s1              # Pass pointer to current piece as argument
-    li   $a1, 1                # Pass ship_num
+    li   $a1, 1                # Pass ship_num (can be adjusted if needed)
     jal  placePieceOnBoard     # Call placePieceOnBoard
-    or   $s2, $s2, $v0         # Accumulate errors
 
+    # Handle the returned error from placePieceOnBoard
+    li   $t0, 1
+    beq  $v0, $t0, mark_occupied  # If error is 1 (occupied), mark it
+    li   $t0, 2
+    beq  $v0, $t0, mark_out_of_bounds  # If error is 2 (out of bounds), mark it
+
+    # Accumulate general error
+    or   $s2, $s2, $v0         # Accumulate errors
+    j    continue_place_loop
+
+mark_occupied:
+    ori  $t4, $t4, 1           # Mark occupied error
+    j    continue_place_loop
+
+mark_out_of_bounds:
+    ori  $t5, $t5, 1           # Mark out-of-bounds error
+
+continue_place_loop:
     # Move to the next piece
     addi $s1, $s1, 16          # Advance pointer to next piece (struct size 16 bytes)
     addi $s0, $s0, 1           # Increment loop counter
     j    place_loop            # Repeat placing loop
 
 check_errors:
-    # Check if both errors occurred
-    li   $t0, 3
-    and  $t1, $s2, $t0
-    beq  $t1, $t0, return_both_errors  # If both errors occurred, return 3
+    # Combine errors to determine the result
+    andi $t0, $t4, 1
+    andi $t1, $t5, 1
+    and  $t2, $t0, $t1         # Check if both errors occurred
+    beq  $t2, 1, return_both_errors  # If both errors occurred, return 3
 
     # Check if only occupied error occurred
-    li   $t0, 1
-    and  $t1, $s2, $t0
-    bne  $t1, $zero, return_occupied_test
+    beq  $t0, 1, return_occupied
 
     # Check if only out-of-bounds error occurred
-    li   $t0, 2
-    and  $t1, $s2, $t0
-    bne  $t1, $zero, return_out_of_bounds_test
+    beq  $t1, 1, return_out_of_bounds
 
     # If no errors, return success
     li   $v0, 0
@@ -471,11 +486,11 @@ return_both_errors:
     li   $v0, 3                # Return 3 for both errors
     j    end_test_fit
 
-return_occupied_test:
+return_occupied:
     li   $v0, 1                # Return 1 for occupied error
     j    end_test_fit
 
-return_out_of_bounds_test:
+return_out_of_bounds:
     li   $v0, 2                # Return 2 for out-of-bounds error
 
 end_test_fit:
@@ -486,11 +501,5 @@ end_test_fit:
     lw   $s2, 0($sp)           # Restore $s2
     addi $sp, $sp, 16          # Deallocate stack space
     jr   $ra                   # Return to caller
-
-
-
-
-
-
 
 .include "skeleton.asm"
