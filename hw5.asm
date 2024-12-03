@@ -387,11 +387,11 @@ test_fit:
 
     # Ensure starting address is word-aligned
     andi $t0, $a0, 3           # Check alignment
-    bne  $t0, $zero, return_error_4  # If not aligned, return error 4
+    bne  $t0, $zero, set_error_4  # If not aligned, set error 4
 
 validate_loop:
-    # Check if all 6 ships have been processed
-    li   $t0, 6                # Number of ships (adjust as needed)
+    # Check if all ships have been processed
+    li   $t0, 6                # Number of ships
     beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 6
 
     # Load ship type and orientation from the struct
@@ -417,7 +417,7 @@ validate_loop:
 
 set_error_4:
     li   $s2, 4                # Set error 4 for invalid type/orientation
-    j    finalize_test_fit     # Skip to finalize
+    j    finalize_test_fit     # Skip placement if type/orientation is invalid
 
 process_ships:
     # Reset loop counter and pointer to the start of the array
@@ -425,7 +425,7 @@ process_ships:
     move $s1, $a0
 
 place_loop:
-    # Check if all 6 ships have been processed
+    # Check if all ships have been processed
     li   $t0, 6                # Number of ships
     beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 6
 
@@ -441,22 +441,29 @@ place_loop:
     j    place_loop            # Repeat placement loop
 
 finalize_test_fit:
-    # Check accumulated errors and return appropriate status
-    beq  $s2, $zero, return_success  # If no errors, return success
-
+    # Prioritize errors correctly
+    # Check for mixed error (occupied and out-of-bounds)
     li   $t0, 3                # Both occupied and out-of-bounds
     and  $t1, $s2, $t0
     beq  $t1, $t0, return_error_3  # If both errors, return 3
 
-    li   $t0, 2                # Out-of-bounds
+    # Check for out-of-bounds error
+    li   $t0, 2
     and  $t1, $s2, $t0
     bne  $t1, $zero, return_error_2
 
-    li   $t0, 1                # Occupied
+    # Check for occupied error
+    li   $t0, 1
     and  $t1, $s2, $t0
     bne  $t1, $zero, return_error_1
 
-    li   $v0, 4                # Default to type/orientation error
+    # If no placement errors, check for type/orientation error
+    li   $t0, 4
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_error_4
+
+    # Return success if no errors
+    li   $v0, 0                # Success
     j    test_fit_epilogue
 
 return_error_4:
@@ -474,9 +481,6 @@ return_error_2:
 return_error_1:
     li   $v0, 1                # Occupied error
     j    test_fit_epilogue
-
-return_success:
-    li   $v0, 0                # Success
 
 test_fit_epilogue:
     # Function Epilogue
