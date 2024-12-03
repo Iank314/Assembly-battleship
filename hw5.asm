@@ -191,7 +191,7 @@ end_printBoard:
 #   $a1 - col
 #   $a2 - value
 # Returns:
-#   $v0 - 0 if successful, 1 if occupied, 2 if out of bounds
+# $v0 - 0 if successful, 1 if occupied, 2 if out of bounds
 # Uses global variables: board (char[]), board_width (int), board_height (int)
 place_tile:
     # Function Prologue
@@ -233,8 +233,8 @@ place_tile:
 
     # Check if the cell is occupied (non-zero)
     beq  $t2, $zero, place_value  # If board[index] == 0, proceed to place value
-    li   $v0, 1                # Set return value to 1 (occupied)
-    j    place_tile_done       # Jump to function epilogue
+    li   $v0, 1                   # Set return value to 1 (occupied)
+    j    place_tile_done          # Jump to function epilogue
 
 place_value:
     # Place the value into board[index]
@@ -270,7 +270,39 @@ test_fit:
 
 
 T_orientation4:
-    # Study the other T orientations in skeleton.asm to understand how to write this label/subroutine
+    # Place the center block
+    move $a0, $s5              # $a0 = row (center)
+    move $a1, $s6              # $a1 = col (center)
+    move $a2, $s1              # $a2 = ship_num
+    jal place_tile             # Call place_tile
+    or $s2, $s2, $v0           # Accumulate error in $s2
+
+    # Place the top block
+    move $a0, $s5              # $a0 = row
+    addi $a0, $a0, -1          # $a0 = row - 1 (top)
+    move $a1, $s6              # $a1 = col
+    move $a2, $s1              # $a2 = ship_num
+    jal place_tile             # Call place_tile
+    or $s2, $s2, $v0           # Accumulate error in $s2
+
+    # Place the bottom block
+    move $a0, $s5              # $a0 = row
+    addi $a0, $a0, 1           # $a0 = row + 1 (bottom)
+    move $a1, $s6              # $a1 = col
+    move $a2, $s1              # $a2 = ship_num
+    jal place_tile             # Call place_tile
+    or $s2, $s2, $v0           # Accumulate error in $s2
+
+    # Place the left block
+    move $a0, $s5              # $a0 = row
+    move $a1, $s6              # $a1 = col
+    addi $a1, $a1, -1          # $a1 = col - 1 (left)
+    move $a2, $s1              # $a2 = ship_num
+    jal place_tile             # Call place_tile
+    or $s2, $s2, $v0           # Accumulate error in $s2
+
+    # Jump to piece_done after all blocks are placed
     j piece_done
+
 
 .include "skeleton.asm"
