@@ -375,75 +375,123 @@ return_from_function:
 
 
 test_fit:
-    # Save registers
-    addiu $sp, $sp, -16     # Allocate space on stack
-    sw $ra, 12($sp)         # Save return address
-    sw $s0, 8($sp)          # Save $s0 (loop counter)
-    sw $s1, 4($sp)          # Save $s1 (ship pointer)
-    sw $s2, 0($sp)          # Save $s2 (status register)
+    # Function Prologue
+    addi $sp, $sp, -16         # Allocate stack space
+    sw   $ra, 12($sp)          # Save return address
+    sw   $s0, 8($sp)           # Save $s0 (loop counter)
+    sw   $s1, 4($sp)           # Save $s1 (ship struct address)
+    sw   $s2, 0($sp)           # Save $s2 (total error)
 
-    # Initialize variables
-    li $s0, 0               # Loop counter for 5 ships
-    move $s1, $a0           # Pointer to the ship array
-    li $v0, 0               # Initialize return value (success)
+    li   $s0, 0                # Initialize loop counter to 0
+    move $s1, $a0              # $s1 points to the start of the array of ships
+    li   $s2, 0                # Initialize error to 0
 
-check_ships:
-    # Load type and orientation of the current ship
-    lw $t0, 0($s1)          # Load type of ship
-    lw $t1, 4($s1)          # Load orientation of ship
+    # Ensure starting address is word-aligned
+    andi $t0, $a0, 3           # Check alignment
+    bne  $t0, $zero, set_error_4  # If not aligned, set error 4
 
-    # Check if type or orientation is out of bounds
-    li $t2, 5               # Max type value (assuming 5 types)
-    bge $t0, $t2, invalid_type_or_orientation
-    blt $t0, 0, invalid_type_or_orientation
+validate_loop:
+    # Check if all ships have been processed
+    li   $t0, 5                # Number of ships
+    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 5
 
-    li $t2, 4               # Max orientation value (assuming 4 orientations)
-    bge $t1, $t2, invalid_type_or_orientation
-    blt $t1, 0, invalid_type_or_orientation
+    # Load ship type and orientation from the struct
+    lw   $t1, 0($s1)           # $t1 = type
+    lw   $t2, 4($s1)           # $t2 = orientation
 
-    # Place the current piece on the board
-    move $a0, $s1           # Pass pointer to the current ship
-    jal placePieceOnBoard   # Call placePieceOnBoard
-    or $s2, $s2, $v0        # Accumulate errors in $s2
+    # Validate type (1 <= type <= 7)
+    li   $t3, 1
+    blt  $t1, $t3, set_error_4  # If type < 1, set error 4
+    li   $t3, 7
+    bgt  $t1, $t3, set_error_4  # If type > 7, set error 4
 
-    # Move to the next ship
-    addiu $s1, $s1, 8       # Move to the next ship in the array
-    addiu $s0, $s0, 1       # Increment loop counter
-    li $t3, 5               # Total number of ships
-    blt $s0, $t3, check_ships
+    # Validate orientation (1 <= orientation <= 4)
+    li   $t3, 1
+    blt  $t2, $t3, set_error_4  # If orientation < 1, set error 4
+    li   $t3, 4
+    bgt  $t2, $t3, set_error_4  # If orientation > 4, set error 4
 
-    # Check accumulated errors in $s2
-    li $t4, 1               # Error: occupied
-    and $t5, $s2, $t4       # Check for occupied
-    li $t4, 2               # Error: out of bounds
-    and $t6, $s2, $t4       # Check for out of bounds
-    or $t7, $t5, $t6        # Combine errors
+    # Increment to the next ship struct (4 fields per struct, 16 bytes total)
+    addi $s1, $s1, 16
+    addi $s0, $s0, 1           # Increment loop counter
+    j    validate_loop         # Repeat validation loop
 
-    # Return error based on the combined errors
-    li $v0, 3               # Error: both occupied and out of bounds
-    beq $t7, 3, return_result
+set_error_4:
+    li   $s2, 4                # Set error 4 for invalid type/orientation
+    j    finalize_test_fit     # Skip placement if type/orientation is invalid
 
-    li $v0, 2               # Error: out of bounds only
-    beq $t6, $t4, return_result
+process_ships:
+    # Reset loop counter and pointer to the start of the array
+    li   $s0, 0
+    move $s1, $a0
 
-    li $v0, 1               # Error: occupied only
-    beq $t5, $t4, return_result
+place_loop:
+    # Check if all ships have been processed
+    li   $t0, 5                # Number of ships
+    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 5
 
-    li $v0, 0               # Success
-    j return_result
+    # Place the current ship on the board
+    move $a0, $s1              # Address of the current ship struct
+    addi $a1, $s0, 1           # Ship number (1-based index)
+    jal  placePieceOnBoard     # Call placePieceOnBoard
+    or   $s2, $s2, $v0         # Accumulate errors
 
-invalid_type_or_orientation:
-    li $v0, 4               # Error: type or orientation out of bounds
-    j return_result
+    # Increment to the next ship struct
+    addi $s1, $s1, 16          # Move to the next ship struct
+    addi $s0, $s0, 1           # Increment loop counter
+    j    place_loop            # Repeat placement loop
 
-return_result:
-    # Restore registers
-    lw $ra, 12($sp)         # Restore return address
-    lw $s0, 8($sp)          # Restore $s0
-    lw $s1, 4($sp)          # Restore $s1
-    lw $s2, 0($sp)          # Restore $s2
-    addiu $sp, $sp, 16      # Deallocate stack space
-    jr $ra                  # Return to caller
+finalize_test_fit:
+    # Prioritize errors correctly
+    # Check for type/orientation error
+    li   $t0, 4
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_error_4
+
+    # Check for mixed error (occupied and out-of-bounds)
+    li   $t0, 3                # Both occupied and out-of-bounds
+    and  $t1, $s2, $t0
+    beq  $t1, $t0, return_error_3  # If both errors, return 3
+
+    # Check for out-of-bounds error
+    li   $t0, 2
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_error_2
+
+    # Check for occupied error
+    li   $t0, 1
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_error_1
+
+    # Return success if no errors
+    li   $v0, 0                # Success
+    j    test_fit_epilogue
+
+return_error_4:
+    li   $v0, 4                # Type or orientation out-of-bounds
+    j    test_fit_epilogue
+
+return_error_3:
+    li   $v0, 3                # Both occupied and out-of-bounds
+    j    test_fit_epilogue
+
+return_error_2:
+    li   $v0, 2                # Out-of-bounds error
+    j    test_fit_epilogue
+
+return_error_1:
+    li   $v0, 1                # Occupied error
+    j    test_fit_epilogue
+
+test_fit_epilogue:
+    # Function Epilogue
+    lw   $ra, 12($sp)          # Restore return address
+    lw   $s0, 8($sp)           # Restore $s0
+    lw   $s1, 4($sp)           # Restore $s1
+    lw   $s2, 0($sp)           # Restore $s2
+    addi $sp, $sp, 16          # Deallocate stack space
+    jr   $ra                   # Return to caller
+
 
 
 
