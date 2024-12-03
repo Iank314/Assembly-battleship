@@ -229,47 +229,36 @@ out_of_bounds:
 
 
 T_orientation4:
-    # Place the center block
-    move $a0, $s5              # $a0 = row (center)
-    move $a1, $s6              # $a1 = col (center)
-    move $a2, $s1              # $a2 = ship_num
-    jal place_tile             # Call place_tile
-    or $s2, $s2, $v0           # Accumulate error in $s2
+    move $a0, $s5          # row
+    move $a1, $s6          # col
+    move $a2, $s1          # ship_num
+    jal place_tile          # place the first tile
+    or $s2, $s2, $v0       # accumulate error
 
-    # Place the top block
-    move $a0, $s5              # $a0 = row
-    addi $a0, $a0, -1          # $a0 = row - 1 (top)
-    move $a1, $s6              # $a1 = col
-    move $a2, $s1              # $a2 = ship_num
-    jal place_tile             # Call place_tile
-    or $s2, $s2, $v0           # Accumulate error in $s2
+    move $a0, $s5          # row
+    move $a1, $s6
+    addi $a1, $a1, 1       # col + 1
+    move $a2, $s1
+    jal place_tile          # place the second tile
+    or $s2, $s2, $v0       # accumulate error
 
-    # Place the bottom block
-    move $a0, $s5              # $a0 = row
-    addi $a0, $a0, 1           # $a0 = row + 1 (bottom)
-    move $a1, $s6              # $a1 = col
-    move $a2, $s1              # $a2 = ship_num
-    jal place_tile             # Call place_tile
-    or $s2, $s2, $v0           # Accumulate error in $s2
+    move $a0, $s5          # row
+    move $a1, $s6
+    addi $a1, $a1, 2       # col + 2
+    move $a2, $s1
+    jal place_tile          # place the third tile
+    or $s2, $s2, $v0       # accumulate error
 
-    # Place the left block
-    move $a0, $s5              # $a0 = row
-    move $a1, $s6              # $a1 = col
-    addi $a1, $a1, -1          # $a1 = col - 1 (left)
-    move $a2, $s1              # $a2 = ship_num
-    jal place_tile             # Call place_tile
-    or $s2, $s2, $v0           # Accumulate error in $s2
+    move $a0, $s5
+    addi $a0, $a0, 1       # row + 1
+    move $a1, $s6
+    addi $a1, $a1, 1       # col + 1
+    move $a2, $s1
+    jal place_tile          # place the fourth tile
+    or $s2, $s2, $v0       # accumulate error
 
-    # Place the right block (new addition for balance)
-    move $a0, $s5              # $a0 = row
-    move $a1, $s6              # $a1 = col
-    addi $a1, $a1, 1           # $a1 = col + 1 (right)
-    move $a2, $s1              # $a2 = ship_num
-    jal place_tile             # Call place_tile
-    or $s2, $s2, $v0           # Accumulate error in $s2
+    j piece_done            # jump to piece_done label
 
-    # Jump to piece_done after all blocks are placed
-    j piece_done
 
 
 
