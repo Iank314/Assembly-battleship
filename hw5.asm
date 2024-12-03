@@ -260,6 +260,14 @@ T_orientation4:
     jal place_tile             # Call place_tile
     or $s2, $s2, $v0           # Accumulate error in $s2
 
+    # Place the right block (new addition for balance)
+    move $a0, $s5              # $a0 = row
+    move $a1, $s6              # $a1 = col
+    addi $a1, $a1, 1           # $a1 = col + 1 (right)
+    move $a2, $s1              # $a2 = ship_num
+    jal place_tile             # Call place_tile
+    or $s2, $s2, $v0           # Accumulate error in $s2
+
     # Jump to piece_done after all blocks are placed
     j piece_done
 
