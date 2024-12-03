@@ -316,30 +316,30 @@ piece_done:
     beq  $s2, $zero, success       # No errors: return 0
 
     # Check for both errors simultaneously
-    li   $t0, 3                   # Check if both bits (occupied and out of bounds) are set
+    li   $t0, 3                   # Bitmask for both errors
     and  $t1, $s2, $t0
-    beq  $t1, $t0, mixed_error    # If both errors, return 3
+    bne  $t1, $zero, mixed_error  # If both errors, return 3
 
     # Check if only occupied error occurred
     li   $t0, 1
     and  $t1, $s2, $t0
-    bne  $t1, $zero, return_error_1
+    bne  $t1, $zero, return_occupied
 
     # Check if only out-of-bounds error occurred
     li   $t0, 2
     and  $t1, $s2, $t0
-    bne  $t1, $zero, return_error_2
+    bne  $t1, $zero, return_out_of_bounds
 
 mixed_error:
-    li   $v0, 3                    # Return 3 if both errors occurred
+    li   $v0, 3                    # Return 3 for both errors
     j    piece_cleanup
 
-return_error_1:
-    li   $v0, 1                    # Return 1 if only occupied error occurred
+return_occupied:
+    li   $v0, 1                    # Return 1 for occupied error
     j    piece_cleanup
 
-return_error_2:
-    li   $v0, 2                    # Return 2 if only out-of-bounds error occurred
+return_out_of_bounds:
+    li   $v0, 2                    # Return 2 for out-of-bounds error
     j    piece_cleanup
 
 success:
@@ -442,7 +442,7 @@ finalize_test_fit:
     j    test_fit_epilogue
 
 return_error_4:
-    li   $v0, 4                # Return type/orientation out-of-bounds error
+    li   $v0, 4                # Return orientation out-of-bounds error
     j    test_fit_epilogue
 
 return_error_1:
