@@ -73,7 +73,9 @@ end_zeroOut:
     jr   $ra                   # Return to caller
 
 
-
+piece_invalid_type:
+    li   $v0, -1              # Set return value to -1 (invalid type error)
+    j    piece_cleanup        # Jump to cleanup
 
 # Function: placePieceOnBoard
 # Arguments: 
