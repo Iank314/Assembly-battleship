@@ -282,6 +282,7 @@ T_orientation4:
 #   $v0 - 0 if successful, 1 if occupied, 2 if out of bounds, 3 if both errors occur.
 # Uses global variables: board (char[]), board_width (int), board_height (int)
 
+
 placePieceOnBoard:
     # Function prologue
     addi $sp, $sp, -16         # Allocate stack space
@@ -289,6 +290,10 @@ placePieceOnBoard:
     sw   $s3, 8($sp)           # Save $s3
     sw   $s4, 4($sp)           # Save $s4
     sw   $s2, 0($sp)           # Save $s2
+
+    # Check alignment of $a0
+    andi $t0, $a0, 3           # Check alignment of $a0
+    bne  $t0, $zero, piece_invalid_type  # If not aligned, handle as invalid type
 
     # Initialize accumulated error register
     li   $s2, 0                # $s2 = 0 (no errors initially)
@@ -365,8 +370,6 @@ return_from_function:
     lw   $s2, 0($sp)               # Restore $s2
     addi $sp, $sp, 16              # Deallocate stack space
     jr   $ra                       # Return to caller
-
-
 
 
 
