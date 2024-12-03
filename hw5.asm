@@ -380,11 +380,11 @@ test_fit:
     sw   $ra, 12($sp)          # Save return address
     sw   $s0, 8($sp)           # Save $s0 (loop counter)
     sw   $s1, 4($sp)           # Save $s1 (ship struct address)
-    sw   $s2, 0($sp)           # Save $s2 (total error)
+    sw   $s2, 0($sp)           # Save $s2 (error accumulator)
 
     li   $s0, 0                # Initialize loop counter to 0
     move $s1, $a0              # $s1 points to the start of the array of ships
-    li   $s2, 0                # Initialize error to 0
+    li   $s2, 0                # Reset error register
 
     # Ensure starting address is word-aligned
     andi $t0, $a0, 3           # Check alignment
@@ -392,8 +392,8 @@ test_fit:
 
 validate_loop:
     # Check if all ships have been processed
-    li   $t0, 5                # Number of ships
-    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 5
+    li   $t0, 6                # Number of ships
+    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 6
 
     # Load ship type and orientation from the struct
     lw   $t1, 0($s1)           # $t1 = type
@@ -427,8 +427,8 @@ process_ships:
 
 place_loop:
     # Check if all ships have been processed
-    li   $t0, 5                # Number of ships
-    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 5
+    li   $t0, 6                # Number of ships
+    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 6
 
     # Place the current ship on the board
     move $a0, $s1              # Address of the current ship struct
@@ -443,25 +443,21 @@ place_loop:
 
 finalize_test_fit:
     # Prioritize errors correctly
-    # Check for type/orientation error
-    li   $t0, 4
-    and  $t1, $s2, $t0
-    bne  $t1, $zero, return_error_4
-
-    # Check for mixed error (occupied and out-of-bounds)
     li   $t0, 3                # Both occupied and out-of-bounds
     and  $t1, $s2, $t0
     beq  $t1, $t0, return_error_3  # If both errors, return 3
 
-    # Check for out-of-bounds error
     li   $t0, 2
     and  $t1, $s2, $t0
     bne  $t1, $zero, return_error_2
 
-    # Check for occupied error
     li   $t0, 1
     and  $t1, $s2, $t0
     bne  $t1, $zero, return_error_1
+
+    li   $t0, 4
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_error_4
 
     # Return success if no errors
     li   $v0, 0                # Success
@@ -491,6 +487,7 @@ test_fit_epilogue:
     lw   $s2, 0($sp)           # Restore $s2
     addi $sp, $sp, 16          # Deallocate stack space
     jr   $ra                   # Return to caller
+
 
 
 
