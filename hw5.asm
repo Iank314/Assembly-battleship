@@ -232,7 +232,7 @@ T_orientation4:
     move $a0, $s5          # row
     addi $a0, $a0, 1       # row + 1 (shift one row down)
     move $a1, $s6          # col
-    addi $a1, $a1, 1       # col + 1 (shift one column right)
+    addi $a1, $a1, 1       # col (shift one column right)
     move $a2, $s1          # ship_num
     jal place_tile          # place the center tile
     or $s2, $s2, $v0       # accumulate error
