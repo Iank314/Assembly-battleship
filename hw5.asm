@@ -252,7 +252,7 @@ T_orientation4:
     move $a1, $s6
     addi $a1, $a1, 0       # col (aligned with adjusted center)
     move $a2, $s1
-    jal place_tile          # place the vertical tile below
+    jal place_tile         # place the vertical tile below
     or $s2, $s2, $v0       # track error
 
     # Place the horizontal tile to the right of the center
@@ -261,7 +261,7 @@ T_orientation4:
     move $a1, $s6
     addi $a1, $a1, 1       # col + 1 (directly right of adjusted center)
     move $a2, $s1
-    jal place_tile          # place the horizontal tile to the right
+    jal place_tile         # place the horizontal tile to the right
     or $s2, $s2, $v0       # track error
 
     j piece_done            # jump to piece_done label
@@ -395,7 +395,7 @@ test_fit:
 
     # Ensure starting address is word-aligned
     andi $t0, $a0, 3           # Check alignment
-    bne  $t0, $zero, set_error_4  # If not aligned, set error 4
+    bne  $t0, $zero, return_error_4  # If not aligned, return error 4
 
 validate_loop:
     # Check if all ships have been processed
@@ -408,24 +408,20 @@ validate_loop:
 
     # Validate type (1 <= type <= 7)
     li   $t3, 1
-    blt  $t1, $t3, set_error_4  # If type < 1, set error 4
+    blt  $t1, $t3, return_error_4  # If type < 1, return error 4
     li   $t3, 7
-    bgt  $t1, $t3, set_error_4  # If type > 7, set error 4
+    bgt  $t1, $t3, return_error_4  # If type > 7, return error 4
 
     # Validate orientation (1 <= orientation <= 4)
     li   $t3, 1
-    blt  $t2, $t3, set_error_4  # If orientation < 1, set error 4
+    blt  $t2, $t3, return_error_4  # If orientation < 1, return error 4
     li   $t3, 4
-    bgt  $t2, $t3, set_error_4  # If orientation > 4, set error 4
+    bgt  $t2, $t3, return_error_4  # If orientation > 4, return error 4
 
     # Increment to the next ship struct (4 fields per struct, 16 bytes total)
     addi $s1, $s1, 16
     addi $s0, $s0, 1           # Increment loop counter
     j    validate_loop         # Repeat validation loop
-
-set_error_4:
-    li   $s2, 4                # Set error 4 for invalid type/orientation
-    j    finalize_test_fit     # Skip placement if type/orientation is invalid
 
 process_ships:
     # Reset loop counter and pointer to the start of the array
@@ -441,7 +437,7 @@ place_loop:
     move $a0, $s1              # Address of the current ship struct
     addi $a1, $s0, 1           # Ship number (1-based index)
     jal  placePieceOnBoard     # Call placePieceOnBoard
-    or   $s2, $s2, $v0         # track errors
+    or   $s2, $s2, $v0         # Track errors
 
     # Increment to the next ship struct
     addi $s1, $s1, 16          # Move to the next ship struct
@@ -462,11 +458,6 @@ finalize_test_fit:
     and  $t1, $s2, $t0
     bne  $t1, $zero, return_error_1
 
-    li   $t0, 4
-    and  $t1, $s2, $t0
-    bne  $t1, $zero, return_error_4
-
-    # Return success if no errors
     li   $v0, 0                # Success
     j    test_fit_epilogue
 
@@ -494,10 +485,6 @@ test_fit_epilogue:
     lw   $s2, 0($sp)           # Restore $s2
     addi $sp, $sp, 16          # Deallocate stack space
     jr   $ra                   # Return to caller
-
-
-
-
 
 
 .include "skeleton.asm"
