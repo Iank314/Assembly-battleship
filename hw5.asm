@@ -273,8 +273,6 @@ T_orientation4:
 
 
 
-
-
 # Function: placePieceOnBoard
 # Arguments:
 #   $a0 - address of piece struct
@@ -383,24 +381,24 @@ return_from_function:
 
 test_fit:
     # Function Prologue
-    addi $sp, $sp, -16         # Allocate stack space
-    sw   $ra, 12($sp)          # Save return address
-    sw   $s0, 8($sp)           # Save $s0 (loop counter)
-    sw   $s1, 4($sp)           # Save $s1 (ship struct address)
-    sw   $s2, 0($sp)           # Save $s2 (error tracker)
+    addi $sp, $sp, -16          # Allocate stack space
+    sw   $ra, 12($sp)           # Save return address
+    sw   $s0, 8($sp)            # Save $s0 (loop counter)
+    sw   $s1, 4($sp)            # Save $s1 (ship struct address)
+    sw   $s2, 0($sp)            # Save $s2 (error tracker)
 
-    li   $s0, 0                # Initialize loop counter to 0
-    move $s1, $a0              # $s1 points to the start of the array of ships
-    li   $s2, 0                # Reset error register
+    li   $s0, 0                 # Initialize loop counter to 0
+    move $s1, $a0               # $s1 points to the start of the array of ships
+    li   $s2, 0                 # Reset error tracker
 
 validate_loop:
-    # Check if all ships have been validated
-    li   $t0, 5                # Number of ships
-    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 5
+    # Validate types and orientations before placement
+    li   $t0, 5                 # Number of ships
+    beq  $s0, $t0, process_ships  # If all ships validated, process placement
 
-    # Load ship type and orientation from the struct
-    lw   $t1, 0($s1)           # $t1 = type
-    lw   $t2, 4($s1)           # $t2 = orientation
+    # Load ship type and orientation
+    lw   $t1, 0($s1)            # Load type into $t1
+    lw   $t2, 4($s1)            # Load orientation into $t2
 
     # Validate type (1 <= type <= 7)
     li   $t3, 1
@@ -408,49 +406,66 @@ validate_loop:
     li   $t3, 7
     bgt  $t1, $t3, return_error_4  # If type > 7, return error 4
 
-    # Validate orientation (0 <= orientation <= 3)
-    li   $t3, 0
-    blt  $t2, $t3, return_error_4  # If orientation < 0, return error 4
-    li   $t3, 3
-    bgt  $t2, $t3, return_error_4  # If orientation > 3, return error 4
+    # Validate orientation (1 <= orientation <= 4)
+    li   $t3, 1
+    blt  $t2, $t3, return_error_4  # If orientation < 1, return error 4
+    li   $t3, 4
+    bgt  $t2, $t3, return_error_4  # If orientation > 4, return error 4
 
-    # Increment to the next ship struct (4 fields per struct, 16 bytes total)
+    # Move to next ship struct (4 fields per struct, 16 bytes total)
     addi $s1, $s1, 16
     addi $s0, $s0, 1           # Increment loop counter
-    j    validate_loop         # Repeat validation loop
+    j    validate_loop
 
 process_ships:
-    # Reset loop counter and pointer to the start of the array
+    # Reset loop counter and pointer to start of array
     li   $s0, 0
     move $s1, $a0
 
 place_loop:
-    # Check if all ships have been processed
+    # Place each ship and track errors
     li   $t0, 5                # Number of ships
-    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 5
+    beq  $s0, $t0, finalize_test_fit  # Exit loop after placing all ships
 
-    # Place the current ship on the board
-    move $a0, $s1              # Address of the current ship struct
-    addi $a1, $s0, 1           # Ship number (1-based index)
-    jal  placePieceOnBoard     # Call placePieceOnBoard
-    or   $s2, $s2, $v0         # Track errors
+    # Load ship details
+    lw   $s4, 4($s1)           # Load orientation
+    lw   $s5, 8($s1)           # Load row position
+    lw   $s6, 12($s1)          # Load column position
+    move $s3, $s0              # Ship number
 
-    # Increment to the next ship struct
-    addi $s1, $s1, 16          # Move to the next ship struct
-    addi $s0, $s0, 1           # Increment loop counter
-    j    place_loop            # Repeat placement loop
+    # Branch to the appropriate piece placement logic
+    lw   $t1, 0($s1)           # Load ship type
+    li   $t2, 1
+    beq  $t1, $t2, piece_square
+    li   $t2, 2
+    beq  $t1, $t2, piece_line
+    li   $t2, 3
+    beq  $t1, $t2, piece_reverse_z
+    li   $t2, 4
+    beq  $t1, $t2, piece_L
+    li   $t2, 5
+    beq  $t1, $t2, piece_z
+    li   $t2, 6
+    beq  $t1, $t2, piece_reverse_L
+    li   $t2, 7
+    beq  $t1, $t2, piece_T
+
+    # Move to the next ship
+    addi $s1, $s1, 16          # Next ship struct
+    addi $s0, $s0, 1           # Increment ship index
+    j    place_loop
 
 finalize_test_fit:
-    # Prioritize errors correctly
-    li   $t0, 3                # Both occupied and out-of-bounds
+    # Check error tracker for priority
+    li   $t0, 3                # Both errors
     and  $t1, $s2, $t0
-    beq  $t1, $t0, return_error_3  # If both errors, return 3
+    beq  $t1, $t0, return_error_3
 
-    li   $t0, 2
+    li   $t0, 2                # Out of bounds
     and  $t1, $s2, $t0
     bne  $t1, $zero, return_error_2
 
-    li   $t0, 1
+    li   $t0, 1                # Occupied
     and  $t1, $s2, $t0
     bne  $t1, $zero, return_error_1
 
@@ -458,29 +473,30 @@ finalize_test_fit:
     j    test_fit_epilogue
 
 return_error_4:
-    li   $v0, 4                # Type or orientation out-of-bounds
+    li   $v0, 4
     j    test_fit_epilogue
 
 return_error_3:
-    li   $v0, 3                # Both occupied and out-of-bounds
+    li   $v0, 3
     j    test_fit_epilogue
 
 return_error_2:
-    li   $v0, 2                # Out-of-bounds error
+    li   $v0, 2
     j    test_fit_epilogue
 
 return_error_1:
-    li   $v0, 1                # Occupied error
+    li   $v0, 1
     j    test_fit_epilogue
 
 test_fit_epilogue:
-    # Function Epilogue
-    lw   $ra, 12($sp)          # Restore return address
-    lw   $s0, 8($sp)           # Restore $s0
-    lw   $s1, 4($sp)           # Restore $s1
-    lw   $s2, 0($sp)           # Restore $s2
-    addi $sp, $sp, 16          # Deallocate stack space
-    jr   $ra                   # Return to caller
+    # Restore registers and return
+    lw   $ra, 12($sp)
+    lw   $s0, 8($sp)
+    lw   $s1, 4($sp)
+    lw   $s2, 0($sp)
+    addi $sp, $sp, 16
+    jr   $ra
+
 
 
 .include "skeleton.asm"
