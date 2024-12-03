@@ -264,6 +264,18 @@ T_orientation4:
     j piece_done
 
 
+
+
+# Function: placePieceOnBoard
+# Arguments:
+#   $a0 - address of piece struct
+#   $a1 - ship_num
+# Returns:
+#   $v0 - 0 if successful, 1 if occupied, 2 if out of bounds, 3 if 
+            both errors occur.
+# Uses global variables: board (char[]), board_width (int), 
+                         board_height (int)
+
 placePieceOnBoard:
     # Function prologue
     addi $sp, $sp, -16         # Allocate stack space
@@ -303,21 +315,31 @@ piece_done:
     # Check accumulated errors and return appropriate code
     beq  $s2, $zero, success       # No errors: return 0
 
-    # Check if occupied error (error code 1) occurred
-    andi $t1, $s2, 1               # Use immediate value 1 for mask
-    beq  $t1, $zero, check_out_of_bounds
-    li   $v0, 1                    # Return 1 if only occupied error occurred
-    j    piece_cleanup
+    # Check for both errors simultaneously
+    li   $t0, 3                   # Check if both bits (occupied and out of bounds) are set
+    and  $t1, $s2, $t0
+    beq  $t1, $t0, mixed_error    # If both errors, return 3
 
-check_out_of_bounds:
-    # Check if out-of-bounds error (error code 2) occurred
-    andi $t1, $s2, 2               # Use immediate value 2 for mask
-    beq  $t1, $zero, mixed_error
-    li   $v0, 2                    # Return 2 if only out-of-bounds error occurred
-    j    piece_cleanup
+    # Check if only occupied error occurred
+    li   $t0, 1
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_error_1
+
+    # Check if only out-of-bounds error occurred
+    li   $t0, 2
+    and  $t1, $s2, $t0
+    bne  $t1, $zero, return_error_2
 
 mixed_error:
     li   $v0, 3                    # Return 3 if both errors occurred
+    j    piece_cleanup
+
+return_error_1:
+    li   $v0, 1                    # Return 1 if only occupied error occurred
+    j    piece_cleanup
+
+return_error_2:
+    li   $v0, 2                    # Return 2 if only out-of-bounds error occurred
     j    piece_cleanup
 
 success:
