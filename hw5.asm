@@ -456,12 +456,12 @@ check_errors:
     # Check if only occupied error occurred
     li   $t0, 1
     and  $t1, $s2, $t0
-    bne  $t1, $zero, return_occupied
+    bne  $t1, $zero, return_occupied_test
 
     # Check if only out-of-bounds error occurred
     li   $t0, 2
     and  $t1, $s2, $t0
-    bne  $t1, $zero, return_out_of_bounds
+    bne  $t1, $zero, return_out_of_bounds_test
 
     # If no errors, return success
     li   $v0, 0
@@ -471,11 +471,11 @@ return_both_errors:
     li   $v0, 3                # Return 3 for both errors
     j    end_test_fit
 
-return_occupied:
+return_occupied_test:
     li   $v0, 1                # Return 1 for occupied error
     j    end_test_fit
 
-return_out_of_bounds:
+return_out_of_bounds_test:
     li   $v0, 2                # Return 2 for out-of-bounds error
 
 end_test_fit:
