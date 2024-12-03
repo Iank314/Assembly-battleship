@@ -373,7 +373,6 @@ return_from_function:
 
 
 
-
 test_fit:
     # Function Prologue
     addi $sp, $sp, -16         # Allocate stack space
@@ -391,9 +390,9 @@ test_fit:
     bne  $t0, $zero, return_error_4  # If not aligned, return error 4
 
 validate_loop:
-    # Check if all 5 ships have been processed
-    li   $t0, 6                # Number of ships
-    beq  $s0, $t0, process_ships  # Exit validation loop if done
+    # Check if all 6 ships have been processed
+    li   $t0, 6                # Number of ships (adjust as needed)
+    beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 6
 
     # Load ship type and orientation from the struct
     lw   $t1, 0($s1)           # $t1 = type
@@ -401,20 +400,24 @@ validate_loop:
 
     # Validate type (1 <= type <= 7)
     li   $t3, 1
-    blt  $t1, $t3, return_error_4  # If type < 1, return 4
+    blt  $t1, $t3, set_error_4  # If type < 1, set error 4
     li   $t3, 7
-    bgt  $t1, $t3, return_error_4  # If type > 7, return 4
+    bgt  $t1, $t3, set_error_4  # If type > 7, set error 4
 
     # Validate orientation (1 <= orientation <= 4)
     li   $t3, 1
-    blt  $t2, $t3, return_error_4  # If orientation < 1, return 4
+    blt  $t2, $t3, set_error_4  # If orientation < 1, set error 4
     li   $t3, 4
-    bgt  $t2, $t3, return_error_4  # If orientation > 4, return 4
+    bgt  $t2, $t3, set_error_4  # If orientation > 4, set error 4
 
     # Increment to the next ship struct (4 fields per struct, 16 bytes total)
     addi $s1, $s1, 16
     addi $s0, $s0, 1           # Increment loop counter
     j    validate_loop         # Repeat validation loop
+
+set_error_4:
+    li   $s2, 4                # Set error 4 for invalid type/orientation
+    j    finalize_test_fit     # Skip to finalize
 
 process_ships:
     # Reset loop counter and pointer to the start of the array
@@ -422,9 +425,9 @@ process_ships:
     move $s1, $a0
 
 place_loop:
-    # Check if all 5 ships have been processed
+    # Check if all 6 ships have been processed
     li   $t0, 6                # Number of ships
-    beq  $s0, $t0, finalize_test_fit  # Exit loop if done
+    beq  $s0, $t0, finalize_test_fit  # Exit loop when $s0 == 6
 
     # Place the current ship on the board
     move $a0, $s1              # Address of the current ship struct
@@ -441,7 +444,6 @@ finalize_test_fit:
     # Check accumulated errors and return appropriate status
     beq  $s2, $zero, return_success  # If no errors, return success
 
-    # Prioritize errors
     li   $t0, 3                # Both occupied and out-of-bounds
     and  $t1, $s2, $t0
     beq  $t1, $t0, return_error_3  # If both errors, return 3
@@ -484,6 +486,7 @@ test_fit_epilogue:
     lw   $s2, 0($sp)           # Restore $s2
     addi $sp, $sp, 16          # Deallocate stack space
     jr   $ra                   # Return to caller
+
 
 
 
