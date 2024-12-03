@@ -118,21 +118,29 @@ piece_done:
     # Check accumulated errors and return appropriate code
     beq  $s2, $zero, success       # No errors: return 0
 
-    li   $t0, 1                    # Load error code 1 (occupied)
-    andi $t1, $s2, $t0             # Check if occupied error occurred
+    # Check if occupied error (error code 1) occurred
+    andi $t1, $s2, 1               # Use immediate value 1 for mask
     beq  $t1, $zero, check_out_of_bounds
     li   $v0, 1                    # Return 1 if only occupied error occurred
     j    piece_cleanup
 
 check_out_of_bounds:
-    li   $t0, 2                    # Load error code 2 (out of bounds)
-    andi $t1, $s2, $t0             # Check if out-of-bounds error occurred
+    # Check if out-of-bounds error (error code 2) occurred
+    andi $t1, $s2, 2               # Use immediate value 2 for mask
     beq  $t1, $zero, mixed_error
     li   $v0, 2                    # Return 2 if only out-of-bounds error occurred
     j    piece_cleanup
 
 mixed_error:
     li   $v0, 3                    # Return 3 if both errors occurred
+
+success:
+    li   $v0, 0                    # Return 0 for successful placement
+
+piece_cleanup:
+    jal  zeroOut                   # Call zeroOut to reset the board
+    j    return_from_function
+
 
 
 
