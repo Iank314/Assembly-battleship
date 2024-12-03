@@ -271,8 +271,7 @@ T_orientation4:
 #   $a0 - address of piece struct
 #   $a1 - ship_num
 # Returns:
-#   $v0 - 0 if successful, 1 if occupied, 2 if out of bounds, 3 if 
-            both errors occur.
+#   $v0 - 0 if successful, 1 if occupied, 2 if out of bounds, 3 if both errors occur.
 # Uses global variables: board (char[]), board_width (int), board_height (int)
 
 placePieceOnBoard:
