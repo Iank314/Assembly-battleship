@@ -184,17 +184,82 @@ end_printBoard:
 
 
 
+
 # Function: place_tile
-# Arguments: 
+# Arguments:
 #   $a0 - row
 #   $a1 - col
 #   $a2 - value
 # Returns:
 #   $v0 - 0 if successful, 1 if occupied, 2 if out of bounds
 # Uses global variables: board (char[]), board_width (int), board_height (int)
-
 place_tile:
-    jr $ra
+    # Function Prologue
+    addi $sp, $sp, -16         # Allocate stack space (4 words)
+    sw   $ra, 12($sp)          # Save return address
+    sw   $s0, 8($sp)           # Save $s0 (row counter)
+    sw   $s1, 4($sp)           # Save $s1 (column counter)
+    sw   $s2, 0($sp)           # Save $s2 (board_width)
+
+    # Load board_width and board_height
+    lw   $s2, board_width      # $s2 = board_width
+    lw   $s3, board_height     # $s3 = board_height
+
+    # Move arguments to saved registers for clarity
+    move $s0, $a0              # $s0 = row
+    move $s1, $a1              # $s1 = col
+    move $s4, $a2              # $s4 = value (additional saved register if needed)
+
+    # Bounds Checking: Check if row < 0 or row >= board_height
+    bltz $s0, out_of_bounds    # If row < 0, jump to out_of_bounds
+    bge  $s0, $s3, out_of_bounds  # If row >= board_height, jump to out_of_bounds
+
+    # Bounds Checking: Check if col < 0 or col >= board_width
+    bltz $s1, out_of_bounds    # If col < 0, jump to out_of_bounds
+    bge  $s1, $s2, out_of_bounds  # If col >= board_width, jump to out_of_bounds
+
+    # Calculate index = row * board_width + col
+    mul  $t0, $s0, $s2         # $t0 = row * board_width
+    add  $t0, $t0, $s1         # $t0 = row * board_width + col
+
+    # Load base address of board
+    la   $t1, board            # $t1 = address of board
+
+    # Calculate address of board[index]
+    add  $t1, $t1, $t0         # $t1 = board + index
+
+    # Load current value at board[index]
+    lb   $t2, 0($t1)           # $t2 = board[index]
+
+    # Check if the cell is occupied (non-zero)
+    beq  $t2, $zero, place_value  # If board[index] == 0, proceed to place value
+    li   $v0, 1                # Set return value to 1 (occupied)
+    j    place_tile_done       # Jump to function epilogue
+
+place_value:
+    # Place the value into board[index]
+    sb   $s4, 0($t1)           # board[index] = value
+
+    li   $v0, 0                # Set return value to 0 (successful)
+
+place_tile_done:
+    # Function Epilogue
+    lw   $ra, 12($sp)          # Restore return address
+    lw   $s0, 8($sp)           # Restore $s0 (row counter)
+    lw   $s1, 4($sp)           # Restore $s1 (column counter)
+    lw   $s2, 0($sp)           # Restore $s2 (board_width)
+    addi $sp, $sp, 16          # Deallocate stack space
+
+    jr   $ra                   # Return to caller
+
+out_of_bounds:
+    li   $v0, 2                # Set return value to 2 (out of bounds)
+    j    place_tile_done       # Jump to function epilogue
+
+
+
+
+
 
 # Function: test_fit
 # Arguments: 
