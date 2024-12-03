@@ -236,26 +236,27 @@ T_orientation4:
 
     move $a0, $s5          # row
     move $a1, $s6
-    addi $a1, $a1, 1       # col + 1
+    addi $a1, $a1, -1      # col - 1 (shift left)
     move $a2, $s1
     jal place_tile          # place the second tile
     or $s2, $s2, $v0       # accumulate error
 
     move $a0, $s5          # row
     move $a1, $s6
-    addi $a1, $a1, -1      # col - 1 (shift to the left of the center)
+    addi $a1, $a1, 1       # col + 1 (shift right)
     move $a2, $s1
     jal place_tile          # place the third tile
     or $s2, $s2, $v0       # accumulate error
 
     move $a0, $s5
-    addi $a0, $a0, 1       # row + 1 (below the center column)
-    move $a1, $s6
+    addi $a0, $a0, 1       # row + 1 (one row down)
+    move $a1, $s6          # col (center column for vertical part)
     move $a2, $s1
     jal place_tile          # place the fourth tile
     or $s2, $s2, $v0       # accumulate error
 
     j piece_done            # jump to piece_done label
+
 
 
 
