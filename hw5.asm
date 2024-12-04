@@ -433,9 +433,14 @@ place_loop:
     jal  placePieceOnBoard      # Call placePieceOnBoard
 
     # Track errors based on $v0
-    beq  $v0, 3, set_error_3    # If $v0 == 3, set error 3 and skip further checks
-    beq  $v0, 2, set_error_2    # If $v0 == 2, set error 2
-    beq  $v0, 1, set_error_1    # If $v0 == 1, set error 1
+    li   $t0, 3                 # Load 3 into $t0
+    beq  $v0, $t0, set_error_3  # If $v0 == 3, set error 3 and skip further checks
+
+    li   $t0, 2                 # Load 2 into $t0
+    beq  $v0, $t0, set_error_2  # If $v0 == 2, set error 2
+
+    li   $t0, 1                 # Load 1 into $t0
+    beq  $v0, $t0, set_error_1  # If $v0 == 1, set error 1
     j    next_ship              # No error, continue to next ship
 
 set_error_3:
