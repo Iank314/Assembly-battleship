@@ -394,7 +394,7 @@ test_fit:
 validate_loop:
     # Validate ship types and orientations
     li   $t0, 5                 # Number of ships
-    beq  $s0, $t0, place_ships  # If all ships validated, place stuffs
+    beq  $s0, $t0, place_ships  # If all ships validated, proceed to placement
 
     # Load ship type and orientation
     lw   $t1, 0($s1)            # Load type
@@ -429,12 +429,27 @@ place_loop:
 
     # Call placePieceOnBoard for the current ship
     move $a0, $s1               # Address of the current ship struct
-    addi $a1, $s0, 1            # Ship number
+    addi $a1, $s0, 1            # Ship number (1-based)
     jal  placePieceOnBoard      # Call placePieceOnBoard
 
-    # Accumulate errors
-    or   $s2, $s2, $v0          # Accumulate error values
+    # Track errors based on $v0
+    beq  $v0, 3, set_error_3    # If $v0 == 3, set error 3 and skip further checks
+    beq  $v0, 2, set_error_2    # If $v0 == 2, set error 2
+    beq  $v0, 1, set_error_1    # If $v0 == 1, set error 1
+    j    next_ship              # No error, continue to next ship
 
+set_error_3:
+    li   $s2, 3                 # Set both errors
+    j    next_ship
+
+set_error_2:
+    ori  $s2, $s2, 2            # Set out-of-bounds error
+    j    next_ship
+
+set_error_1:
+    ori  $s2, $s2, 1            # Set overlap error
+
+next_ship:
     # Move to the next ship
     addi $s1, $s1, 16           # Move to the next ship struct
     addi $s0, $s0, 1            # Increment loop counter
@@ -443,16 +458,13 @@ place_loop:
 finalize_test_fit:
     # Prioritize errors
     li   $t0, 3                 # Both errors
-    and  $t1, $s2, $t0
-    beq  $t1, $t0, return_error_3
+    beq  $s2, $t0, return_error_3
 
     li   $t0, 2                 # Out of bounds
-    and  $t1, $s2, $t0
-    bne  $t1, $zero, return_error_2
+    beq  $s2, $t0, return_error_2
 
     li   $t0, 1                 # Overlap
-    and  $t1, $s2, $t0
-    bne  $t1, $zero, return_error_1
+    beq  $s2, $t0, return_error_1
 
     li   $v0, 0                 # Success
     j    test_fit_epilogue
