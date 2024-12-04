@@ -441,6 +441,7 @@ place_loop:
 
     li   $t0, 1                 # Load 1 into $t0
     beq  $v0, $t0, set_error_1  # If $v0 == 1, set error 1
+
     j    next_ship              # No error, continue to next ship
 
 set_error_3:
