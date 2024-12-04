@@ -397,82 +397,87 @@ return_from_function:
 
     # Validation Phase: Check types and orientations
     validate_loop:
-        beq  $s0, 5, after_validation   # If all 5 pieces checked, proceed
+        # Compare loop counter ($s0) with 5
+        li   $t4, 5                 # Load immediate 5 into $t4
+        beq  $s0, $t4, after_validation   # If $s0 == 5, all pieces checked
 
         # Calculate piece address: base + (i * 16)
-        sll  $t0, $s0, 4                # $t0 = i * 16 (each piece is 16 bytes)
-        add  $t1, $s3, $t0              # $t1 = address of current piece
+        sll  $t0, $s0, 4            # $t0 = i * 16 (each piece is 16 bytes)
+        add  $t1, $s3, $t0          # $t1 = address of current piece
 
-        lw   $t2, 0($t1)                # $t2 = type
-        lw   $t3, 4($t1)                # $t3 = orientation
+        lw   $t2, 0($t1)            # $t2 = type
+        lw   $t3, 4($t1)            # $t3 = orientation
 
         # Check if type < 1
-        li   $t4, 1                     # Load immediate 1 into $t4
-        blt  $t2, $t4, set_invalid_flag # If type < 1, set invalid_flag
+        li   $t4, 1                 # Load immediate 1 into $t4
+        blt  $t2, $t4, set_invalid_flag   # If type < 1, set invalid_flag
 
         # Check if type > 7
-        li   $t4, 7                     # Load immediate 7 into $t4
-        bgt  $t2, $t4, set_invalid_flag # If type > 7, set invalid_flag
+        li   $t4, 7                 # Load immediate 7 into $t4
+        bgt  $t2, $t4, set_invalid_flag   # If type > 7, set invalid_flag
 
         # Check if orientation < 1
-        li   $t4, 1                     # Load immediate 1 into $t4
-        blt  $t3, $t4, set_invalid_flag # If orientation < 1, set invalid_flag
+        li   $t4, 1                 # Load immediate 1 into $t4
+        blt  $t3, $t4, set_invalid_flag   # If orientation < 1, set invalid_flag
 
         # Check if orientation > 4
-        li   $t4, 4                     # Load immediate 4 into $t4
-        bgt  $t3, $t4, set_invalid_flag # If orientation > 4, set invalid_flag
+        li   $t4, 4                 # Load immediate 4 into $t4
+        bgt  $t3, $t4, set_invalid_flag   # If orientation > 4, set invalid_flag
 
-        # If valid, continue
+        # If valid, continue to next piece
         j   continue_validation
 
     set_invalid_flag:
-        li   $s1, 1                     # Set invalid_flag = 1
+        li   $s1, 1                 # Set invalid_flag = 1
 
     continue_validation:
-        addi $s0, $s0, 1                # Increment loop counter
-        j    validate_loop               # Repeat validation loop
+        addi $s0, $s0, 1            # Increment loop counter
+        j    validate_loop           # Repeat validation loop
 
     after_validation:
-        beq  $s1, $zero, proceed_to_placement # If no invalid pieces, proceed
-        li   $v0, 4                      # Set return value to 4 (invalid)
-        j    end_test_fit                # Jump to epilogue
+        # Check if invalid_flag is set
+        beq  $s1, $zero, proceed_to_placement  # If no invalid pieces, proceed
+        li   $v0, 4                 # Set return value to 4 (invalid)
+        j    end_test_fit           # Jump to epilogue
 
     # Placement Phase: Place all valid pieces
     proceed_to_placement:
-        li   $s0, 0                      # Reset loop counter to 0
+        li   $s0, 0                 # Reset loop counter to 0
 
     placement_loop:
-        beq  $s0, 5, after_placement     # If all 5 pieces placed, finish
+        # Compare loop counter ($s0) with 5
+        li   $t4, 5                 # Load immediate 5 into $t4
+        beq  $s0, $t4, after_placement     # If $s0 == 5, all pieces placed
 
         # Calculate piece address: base + (i * 16)
-        sll  $t0, $s0, 4                 # $t0 = i * 16
-        add  $t1, $s3, $t0               # $t1 = address of current piece
+        sll  $t0, $s0, 4            # $t0 = i * 16
+        add  $t1, $s3, $t0          # $t1 = address of current piece
 
-        move $a0, $t1                    # $a0 = address of current piece
-        addi $a1, $s0, 1                 # $a1 = ship_num (1 to 5)
+        move $a0, $t1               # $a0 = address of current piece
+        addi $a1, $s0, 1            # $a1 = ship_num (1 to 5)
 
-        jal  placePieceOnBoard            # Call placePieceOnBoard
+        jal  placePieceOnBoard       # Call placePieceOnBoard
 
         # After return, $v0 has the status code
         # Accumulate error codes using bitwise OR
-        or   $s2, $s2, $v0               # error_code |= v0
+        or   $s2, $s2, $v0          # error_code |= v0
 
-        addi $s0, $s0, 1                  # Increment loop counter
-        j    placement_loop                # Repeat placement loop
+        addi $s0, $s0, 1            # Increment loop counter
+        j    placement_loop          # Repeat placement loop
 
     after_placement:
-        move $v0, $s2                     # Set return value to error_code
-        j    end_test_fit                 # Jump to epilogue
+        move $v0, $s2                # Set return value to error_code
+        j    end_test_fit            # Jump to epilogue
 
     # Function Epilogue
     end_test_fit:
-        lw   $ra, 16($sp)                  # Restore return address
-        lw   $s0, 12($sp)                  # Restore $s0
-        lw   $s1, 8($sp)                   # Restore $s1
-        lw   $s2, 4($sp)                   # Restore $s2
-        lw   $s3, 0($sp)                   # Restore $s3
-        addi $sp, $sp, 20                  # Deallocate stack space
-        jr   $ra                           # Return to caller
+        lw   $ra, 16($sp)            # Restore return address
+        lw   $s0, 12($sp)            # Restore $s0
+        lw   $s1, 8($sp)             # Restore $s1
+        lw   $s2, 4($sp)             # Restore $s2
+        lw   $s3, 0($sp)             # Restore $s3
+        addi $sp, $sp, 20            # Deallocate stack space
+        jr   $ra                     # Return to caller
 
 
 
