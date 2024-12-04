@@ -378,7 +378,6 @@ return_from_function:
 #   $a0 - address of piece array (5 pieces)
 #   $v0 - 0 if successful, 1 if occupied, 2 if out of bounds, 3 if both errors occur, 4 if either the type or orientation is out of bounds.
 # Uses global variables: board (char[]), board_width (int) board_height (int)
-
 test_fit:
     # Function Prologue
     addi $sp, $sp, -16          # Allocate stack space
@@ -429,12 +428,11 @@ place_loop:
 
     # Call placePieceOnBoard for the current ship
     move $a0, $s1               # Address of the current ship struct
-    addi $a1, $s0, 1            # Ship number (1-based)
     jal  placePieceOnBoard      # Call placePieceOnBoard
 
-    # Track errors based on $v0
+    # Check the result of placePieceOnBoard
     li   $t0, 3                 # Load 3 into $t0
-    beq  $v0, $t0, set_error_3  # If $v0 == 3, set error 3 and skip further checks
+    beq  $v0, $t0, set_error_3  # If $v0 == 3, set error 3
 
     li   $t0, 2                 # Load 2 into $t0
     beq  $v0, $t0, set_error_2  # If $v0 == 2, set error 2
@@ -442,7 +440,10 @@ place_loop:
     li   $t0, 1                 # Load 1 into $t0
     beq  $v0, $t0, set_error_1  # If $v0 == 1, set error 1
 
-    j    next_ship              # No error, continue to next ship
+    # Move to the next ship
+    addi $s1, $s1, 16           # Move to the next ship struct
+    addi $s0, $s0, 1            # Increment loop counter
+    j    place_loop
 
 set_error_3:
     li   $s2, 3                 # Set both errors
@@ -456,10 +457,7 @@ set_error_1:
     ori  $s2, $s2, 1            # Set overlap error
 
 next_ship:
-    # Move to the next ship
-    addi $s1, $s1, 16           # Move to the next ship struct
-    addi $s0, $s0, 1            # Increment loop counter
-    j    place_loop
+    j    place_loop             # Continue placing ships
 
 finalize_test_fit:
     # Prioritize errors
