@@ -387,12 +387,12 @@ test_fit:
     li   $s2, 0                # Reset error register
 
     # Ensure starting address is word-aligned
-    andi $t0, $a0, 3           # Check alignment
+    andi $t0, $a0, 3              # Check alignment
     bne  $t0, $zero, set_error_4  # If not aligned, set error 4
 
 validate_loop:
     # Check if all ships have been processed
-    li   $t0, 6                # Number of ships
+    li   $t0, 6                   # Number of ships
     beq  $s0, $t0, process_ships  # Exit validation loop when $s0 == 6
 
     # Load ship type and orientation from the struct
@@ -487,8 +487,6 @@ test_fit_epilogue:
     lw   $s2, 0($sp)           # Restore $s2
     addi $sp, $sp, 16          # Deallocate stack space
     jr   $ra                   # Return to caller
-
-
 
 
 
