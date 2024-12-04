@@ -137,9 +137,9 @@ print_newline:
     j    outer_loop            # Repeat outer loop
 
 end_printBoard:
-    # Print extra newline for better formatting (optional)
+    # Print extra newline for better formatting
     la   $a0, extra_newline    # Load address of extra_newline into $a0
-    li   $v0, 4                # Syscall 4: Print string
+    li   $v0, 4                # Print string
     syscall
 
     # Function Epilogue
@@ -180,11 +180,11 @@ place_tile:
     move $s4, $a2              # $s4 = value (additional saved register if needed)
 
     # Bounds Checking: Check if row < 0 or row >= board_height
-    bltz $s0, out_of_bounds    # If row < 0, jump to out_of_bounds
+    bltz $s0, out_of_bounds       # If row < 0, jump to out_of_bounds
     bge  $s0, $s3, out_of_bounds  # If row >= board_height, jump to out_of_bounds
 
     # Bounds Checking: Check if col < 0 or col >= board_width
-    bltz $s1, out_of_bounds    # If col < 0, jump to out_of_bounds
+    bltz $s1, out_of_bounds       # If col < 0, jump to out_of_bounds
     bge  $s1, $s2, out_of_bounds  # If col >= board_width, jump to out_of_bounds
 
     # Calculate index = row * board_width + col
@@ -228,50 +228,43 @@ out_of_bounds:
 
 
 T_orientation4:
-    # Place the center tile of the T (middle of the horizontal bar)
+    # Place the center tile of the T
     move $a0, $s5
-    addi $a0, $a0, 1       # row + 1 (one row down)
+    addi $a0, $a0, 1       # row + 1
     move $a1, $s6
-    addi $a1, $a1, 0       # col (one column left adjustment already handled)
+    addi $a1, $a1, 0       # col 
     move $a2, $s1          # ship_num
-    jal place_tile          # place the center tile
+    jal place_tile         # place the center tile
     or $s2, $s2, $v0       # track error
 
     # Place the vertical tile above the center
     move $a0, $s5
-    addi $a0, $a0, 0       # row (one row up from center)
+    addi $a0, $a0, 0       # row
     move $a1, $s6
-    addi $a1, $a1, 0       # col (aligned with adjusted center)
+    addi $a1, $a1, 0       # col
     move $a2, $s1
-    jal place_tile          # place the vertical tile above
+    jal place_tile         # place the vertical tile above
     or $s2, $s2, $v0       # track error
 
     # Place the vertical tile below the center
     move $a0, $s5
-    addi $a0, $a0, 2       # row + 2 (one row below adjusted center)
+    addi $a0, $a0, 2       # row + 2 
     move $a1, $s6
-    addi $a1, $a1, 0       # col (aligned with adjusted center)
+    addi $a1, $a1, 0       # col
     move $a2, $s1
     jal place_tile          # place the vertical tile below
     or $s2, $s2, $v0       # track error
 
     # Place the horizontal tile to the right of the center
     move $a0, $s5
-    addi $a0, $a0, 1       # row + 1 (same row as adjusted center)
+    addi $a0, $a0, 1       # row + 1 
     move $a1, $s6
-    addi $a1, $a1, 1       # col + 1 (directly right of adjusted center)
+    addi $a1, $a1, 1       # col + 1
     move $a2, $s1
     jal place_tile          # place the horizontal tile to the right
     or $s2, $s2, $v0       # track error
 
     j piece_done            # jump to piece_done label
-
-
-
-
-
-
-
 
 
 
@@ -283,7 +276,6 @@ T_orientation4:
 #   $v0 - 0 if successful, 1 if occupied, 2 if out of bounds, 3 if both errors occur.
 # Uses global variables: board (char[]), board_width (int), board_height (int)
 
-
 placePieceOnBoard:
     # Function prologue
     addi $sp, $sp, -16         # Allocate stack space
@@ -293,11 +285,11 @@ placePieceOnBoard:
     sw   $s2, 0($sp)           # Save $s2
 
     # Check alignment of $a0
-    andi $t0, $a0, 3           # Check alignment of $a0
+    andi $t0, $a0, 3                     # Check alignment of $a0
     bne  $t0, $zero, piece_invalid_type  # If not aligned, handle as invalid type
 
     # Initialize trackerd error register
-    li   $s2, 0                # $s2 = 0 (no errors initially)
+    li   $s2, 0                # $s2 = 0 (no errors at the starts)
 
     # Load piece fields from struct pointed to by $a0
     lw   $s3, 0($a0)           # $s3 = type
@@ -324,17 +316,17 @@ placePieceOnBoard:
     j    piece_invalid_type    # Invalid type
 
 piece_done:
-    # Check for both errors simultaneously
+    # Check for both errors 
     li   $t0, 3                   # Check if both bits (occupied and out of bounds) are set
     and  $t1, $s2, $t0
     beq  $t1, $t0, mixed_error    # If both errors, go to mixed_error
 
-    # Check if only occupied error occurred
+    # Check if occupied error occurred
     li   $t0, 1
     and  $t1, $s2, $t0
     bne  $t1, $zero, return_occupied
 
-    # Check if only out-of-bounds error occurred
+    # Check if out-of-bounds error occurred
     li   $t0, 2
     and  $t1, $s2, $t0
     bne  $t1, $zero, return_out_of_bounds
@@ -398,7 +390,7 @@ return_from_function:
     # Validation Phase: Check types and orientations
     validate_loop:
         # Compare loop counter ($s0) with 5
-        li   $t4, 5                 # Load immediate 5 into $t4
+        li   $t4, 5                       # Load immediate 5 into $t4
         beq  $s0, $t4, after_validation   # If $s0 == 5, all pieces checked
 
         # Calculate piece address: base + (i * 16)
@@ -409,36 +401,36 @@ return_from_function:
         lw   $t3, 4($t1)            # $t3 = orientation
 
         # Check if type < 1
-        li   $t4, 1                 # Load immediate 1 into $t4
+        li   $t4, 1                       # Load immediate 1 into $t4
         blt  $t2, $t4, set_invalid_flag   # If type < 1, set invalid_flag
 
         # Check if type > 7
-        li   $t4, 7                 # Load immediate 7 into $t4
+        li   $t4, 7                       # Load immediate 7 into $t4
         bgt  $t2, $t4, set_invalid_flag   # If type > 7, set invalid_flag
 
         # Check if orientation < 1
-        li   $t4, 1                 # Load immediate 1 into $t4
+        li   $t4, 1                       # Load immediate 1 into $t4
         blt  $t3, $t4, set_invalid_flag   # If orientation < 1, set invalid_flag
 
         # Check if orientation > 4
-        li   $t4, 4                 # Load immediate 4 into $t4
+        li   $t4, 4                       # Load immediate 4 into $t4
         bgt  $t3, $t4, set_invalid_flag   # If orientation > 4, set invalid_flag
 
         # If valid, continue to next piece
         j   continue_validation
 
     set_invalid_flag:
-        li   $s1, 1                 # Set invalid_flag = 1
+        li   $s1, 1                  # Set invalid_flag = 1
 
     continue_validation:
-        addi $s0, $s0, 1            # Increment loop counter
+        addi $s0, $s0, 1             # Increment loop counter
         j    validate_loop           # Repeat validation loop
 
     after_validation:
         # Check if invalid_flag is set
         beq  $s1, $zero, proceed_to_placement  # If no invalid pieces, proceed
-        li   $v0, 4                 # Set return value to 4 (invalid)
-        j    end_test_fit           # Jump to epilogue
+        li   $v0, 4                            # Set return value to 4 (invalid)
+        j    end_test_fit                      # Jump to epilogue
 
     # Placement Phase: Place all valid pieces
     proceed_to_placement:
@@ -446,7 +438,7 @@ return_from_function:
 
     placement_loop:
         # Compare loop counter ($s0) with 5
-        li   $t4, 5                 # Load immediate 5 into $t4
+        li   $t4, 5                        # Load immediate 5 into $t4
         beq  $s0, $t4, after_placement     # If $s0 == 5, all pieces placed
 
         # Calculate piece address: base + (i * 16)
@@ -458,8 +450,6 @@ return_from_function:
 
         jal  placePieceOnBoard       # Call placePieceOnBoard
 
-        # After return, $v0 has the status code
-        # Accumulate error codes using bitwise OR
         or   $s2, $s2, $v0          # error_code |= v0
 
         addi $s0, $s0, 1            # Increment loop counter
