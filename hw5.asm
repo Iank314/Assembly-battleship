@@ -382,7 +382,7 @@ return_from_function:
 
     test_fit:
         # Function Prologue
-        addi $sp, $sp, -20          # Allocate stack space (5 words)
+        addi $sp, $sp, -20          # Allocate stack space (5 words: $ra, $s0, $s1, $s2, $s3)
         sw   $ra, 16($sp)           # Save return address
         sw   $s0, 12($sp)           # Save $s0 (loop counter)
         sw   $s1, 8($sp)            # Save $s1 (invalid_flag)
@@ -407,14 +407,20 @@ return_from_function:
         lw   $t3, 4($t1)                # $t3 = orientation
 
         # Check if type < 1
-        blt  $t2, 1, set_invalid_flag
+        li   $t4, 1                     # Load immediate 1 into $t4
+        blt  $t2, $t4, set_invalid_flag # If type < 1, set invalid_flag
+
         # Check if type > 7
-        bgt  $t2, 7, set_invalid_flag
+        li   $t4, 7                     # Load immediate 7 into $t4
+        bgt  $t2, $t4, set_invalid_flag # If type > 7, set invalid_flag
 
         # Check if orientation < 1
-        blt  $t3, 1, set_invalid_flag
+        li   $t4, 1                     # Load immediate 1 into $t4
+        blt  $t3, $t4, set_invalid_flag # If orientation < 1, set invalid_flag
+
         # Check if orientation > 4
-        bgt  $t3, 4, set_invalid_flag
+        li   $t4, 4                     # Load immediate 4 into $t4
+        bgt  $t3, $t4, set_invalid_flag # If orientation > 4, set invalid_flag
 
         # If valid, continue
         j   continue_validation
@@ -427,7 +433,7 @@ return_from_function:
         j    validate_loop               # Repeat validation loop
 
     after_validation:
-        beq  $s1, 0, proceed_to_placement # If no invalid pieces, proceed
+        beq  $s1, $zero, proceed_to_placement # If no invalid pieces, proceed
         li   $v0, 4                      # Set return value to 4 (invalid)
         j    end_test_fit                # Jump to epilogue
 
@@ -467,9 +473,6 @@ return_from_function:
         lw   $s3, 0($sp)                   # Restore $s3
         addi $sp, $sp, 20                  # Deallocate stack space
         jr   $ra                           # Return to caller
-
-
-
 
 
 
